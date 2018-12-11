@@ -8,7 +8,7 @@
 
 ;; breaker
 
-(defmacro execute-with-circuit-breaker [^CircuitBreaker breaker & body]
+(defmacro execute-with-breaker [^CircuitBreaker breaker & body]
   `(.executeCallable ~breaker ^Callable (fn [] (do ~@body))))
 
 (defn with-breaker [^CircuitBreaker breaker f]
