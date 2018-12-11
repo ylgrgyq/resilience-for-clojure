@@ -1,6 +1,6 @@
-(ns game-lobby.resilience.ratelimiter
+(ns resilience.ratelimiter
   (:refer-clojure :exclude [name])
-  (:require [game-lobby.resilience.util :as u])
+  (:require [resilience.util :as u])
   (:import (java.time Duration)
            (io.github.resilience4j.ratelimiter RateLimiterConfig RateLimiterConfig$Builder RateLimiterRegistry RateLimiter)))
 

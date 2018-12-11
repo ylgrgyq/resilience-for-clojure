@@ -1,4 +1,4 @@
-(ns game-lobby.resilience.core
+(ns resilience.core
   (:import (io.github.resilience4j.circuitbreaker CircuitBreaker)
            (io.github.resilience4j.retry Retry)
            (io.github.resilience4j.bulkhead Bulkhead)
@@ -60,6 +60,6 @@
 (defmacro with-resilience-family [family-members & body]
   (concat `(->> (to-fn ~@body))
           (map #(let [[k v] %]
-                  (list (symbol (str "game-lobby.resilience.core/with-" (name k))) v))
+                  (list (symbol (str "resilience.core/with-" (name k))) v))
                family-members)
           (list `(execute))))

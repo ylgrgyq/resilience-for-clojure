@@ -1,4 +1,4 @@
-(ns game-lobby.resilience.util
+(ns resilience.util
   (:import (java.util Iterator)))
 
 (defn lazy-seq-from-iterator [^Iterator iter]

@@ -1,6 +1,6 @@
-(ns game-lobby.resilience.retry
+(ns resilience.retry
   (:refer-clojure :exclude [name])
-  (:require [game-lobby.resilience.util :as u])
+  (:require [resilience.util :as u])
   (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry)
            (java.time Duration)
            (java.util.function Predicate)))

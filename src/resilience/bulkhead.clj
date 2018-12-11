@@ -1,6 +1,6 @@
-(ns game-lobby.resilience.bulkhead
+(ns resilience.bulkhead
   (:refer-clojure :exclude [name])
-  (:require [game-lobby.resilience.util :as u])
+  (:require [resilience.util :as u])
   (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead)))
 
 (defn ^BulkheadConfig bulkhead-config [opts]

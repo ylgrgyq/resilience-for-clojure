@@ -1,4 +1,4 @@
-(ns game-lobby.resilience.timelimiter
+(ns resilience.timelimiter
   (:refer-clojure :exclude [name])
   (:import (java.time Duration)
            (io.github.resilience4j.timelimiter TimeLimiterConfig TimeLimiterConfig$Builder TimeLimiter)))

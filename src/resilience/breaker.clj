@@ -1,6 +1,6 @@
-(ns game-lobby.resilience.breaker
+(ns resilience.breaker
   (:refer-clojure :exclude [name])
-  (:require [game-lobby.resilience.util :as u])
+  (:require [resilience.util :as u])
   (:import (io.github.resilience4j.circuitbreaker CircuitBreakerConfig CircuitBreakerConfig$Builder
                                                   CircuitBreakerRegistry CircuitBreaker)
            (java.time Duration)
