@@ -20,7 +20,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 ;; do something with the protection of the breaker
 (resilience/execute-with-breaker my-breaker
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 ```
 
 ### Retry
@@ -38,7 +38,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 ;; do something with the protection of the retry
 (resilience/execute-with-retry my-retry
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 ```
 
 ### Bulkhead
@@ -55,7 +55,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 ;; do something with the protection of the bulkhead
 (resilience/execute-with-bulkhead my-bulkhead
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 ```
 
 ### Rate Limiter
@@ -73,7 +73,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 ;; do something with the protection of the ratelimiter
 (resilience/execute-with-ratelimiter my-ratelimiter
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 ```
 
 ### Use the resilience family all together
@@ -104,7 +104,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 (resilience/with-resilience-family 
   {:bulkhead my-bulkhead :retry my-retry :breaker my-breaker}
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 ```
 
 ### Registry
@@ -128,7 +128,7 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
 ;; then we can use the circuit breaker as usual
 (resilience/execute-with-breaker my-breaker
   (do-something)
-  (do-another-something))
+  (do-another-thing))
 
 ;; and from the Registry we can get all circuit breakers registered to it
 (doseq [cb (breaker/get-all-breakers my-breaker-registry)]
