@@ -82,6 +82,7 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 (require '[resilience.breaker :as breaker]
          '[resilience.bulkhead :as bulkhead]
          '[resilience.retry :as retry]
+         '[resilience.ratelimiter :as ratelimiter]
          '[resilience.core :as resilience])
 
 ;; define a breaker
@@ -100,9 +101,15 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
   {:max-concurrent-calls 3
    :max-wait-millis 1000})
 
+;; define a ratelimiter
+(ratelimiter/defratelimiter my-ratelimiter
+  {:limit-for-period 10
+   :limit-refresh-period-millis 1000
+   :timeout-millis 1000})
+
 ;; use them all together
 (resilience/with-resilience-family 
-  {:bulkhead my-bulkhead :retry my-retry :breaker my-breaker}
+  {:bulkhead my-bulkhead :retry my-retry :breaker my-breaker :rate-limiter my-ratelimiter}
   (do-something)
   (do-another-thing))
 ```
