@@ -110,7 +110,8 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 ### Registry
 
 All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding `Registry` and use `Registry` as a management tool. Take Circuit Breaker as an example. You can use `Circuit Breaker Registry` to create, retrieve and monitor all your `Circuit Breaker` instances registered to it. Like: 
-```
+
+```clojure
 (require '[resilience.breaker :as breaker]
          '[resilience.core :as resilience])
 
