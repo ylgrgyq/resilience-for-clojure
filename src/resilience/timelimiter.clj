@@ -26,6 +26,3 @@
   (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
     `(def ~sym (time-limiter ~config))))
 
-
-
-

@@ -2,9 +2,12 @@
   (:refer-clojure :exclude [name])
   (:require [resilience.util :as u])
   (:import (io.github.resilience4j.circuitbreaker CircuitBreakerConfig CircuitBreakerConfig$Builder
-                                                  CircuitBreakerRegistry CircuitBreaker)
+                                                  CircuitBreakerRegistry CircuitBreaker CircuitBreaker$StateTransition)
            (java.time Duration)
-           (java.util.function Predicate)))
+           (java.util.function Predicate)
+           (io.github.resilience4j.core EventConsumer)
+           (io.github.resilience4j.circuitbreaker.event CircuitBreakerOnSuccessEvent CircuitBreakerOnErrorEvent
+                                                        CircuitBreakerOnIgnoredErrorEvent CircuitBreakerOnStateTransitionEvent)))
 
 (defn ^CircuitBreakerConfig circuit-breaker-config [opts]
   (if (empty? opts)
@@ -80,7 +83,7 @@
   "Get the state of the circuit breaker in keyword format.
    Currently, state can be one of :DISABLED, :CLOSED, :OPEN, :FORCED_OPEN, :HALF_OPEN"
   [^CircuitBreaker breaker]
-  (keyword (.name (.getState breaker))))
+  (u/enum->keyword (.getState breaker)))
 
 (defn config
   "Returns the configurations of this CircuitBreaker"
@@ -108,9 +111,6 @@
 (defn transition-to-forced-open-state! [^CircuitBreaker breaker]
   (.transitionToForcedOpenState breaker))
 
-(defn event-pulisher [^CircuitBreaker breaker]
-  (.getEventPublisher breaker))
-
 (defn metrics
   "Get the Metrics of this CircuitBreaker"
   [^CircuitBreaker breaker]
@@ -121,6 +121,56 @@
      :number-of-not-permitted-calls (.getNumberOfNotPermittedCalls metric)
      :max-number-of-buffered-calls (.getMaxNumberOfBufferedCalls metric)
      :number-of-successful-calls (.getNumberOfSuccessfulCalls metric)}))
+
+(defprotocol CircuitBreakerEventListener
+  (on-success [this elapsed-millis])
+  (on-error [this throwable elapsed-millis])
+  (on-state-transition [this from-state to-state])
+  (on-reset [this])
+  (on-ignored-error [this throwable elapsed-millis])
+  (on-call-not-permitted [this]))
+
+(defn listen-on-success [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onSuccess pub (reify EventConsumer
+                      (consumeEvent [_ event]
+                        (let [elapsed-millis (.getElapsedDuration ^CircuitBreakerOnSuccessEvent event)]
+                          (on-success event-listener elapsed-millis)))))))
+
+(defn listen-on-error [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onError pub (reify EventConsumer
+                    (consumeEvent [_ event]
+                      (let [elapsed-millis (.getElapsedDuration ^CircuitBreakerOnErrorEvent event)]
+                        (on-error event-listener (.getThrowable ^CircuitBreakerOnErrorEvent event) elapsed-millis)))))))
+
+(defn listen-on-state-transition [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onStateTransition pub (reify EventConsumer
+                              (consumeEvent [_ event]
+                                (let [^CircuitBreaker$StateTransition state-trans (.getStateTransition ^CircuitBreakerOnStateTransitionEvent event)]
+                                  (on-state-transition event-listener
+                                                       (u/enum->keyword (.getFromState state-trans))
+                                                       (u/enum->keyword (.getToState state-trans)))))))))
+
+(defn listen-on-reset [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onReset pub (reify EventConsumer
+                    (consumeEvent [_ _]
+                      (on-reset event-listener))))))
+
+(defn listen-on-ignored-error [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onIgnoredError pub (reify EventConsumer
+                           (consumeEvent [_ event]
+                             (let [elapsed-millis (.getElapsedDuration ^CircuitBreakerOnIgnoredErrorEvent event)]
+                               (on-ignored-error event-listener (.getThrowable ^CircuitBreakerOnIgnoredErrorEvent event) elapsed-millis)))))))
+
+(defn listen-on-call-not-permitted [^CircuitBreaker breaker event-listener]
+  (let [pub (.getEventPublisher breaker)]
+    (.onCallNotPermitted pub (reify EventConsumer
+                               (consumeEvent [_ _]
+                                 (on-call-not-permitted event-listener))))))
 
 
 

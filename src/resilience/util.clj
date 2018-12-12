@@ -6,3 +6,6 @@
     (cons (.next iter)
           (lazy-seq (lazy-seq-from-iterator iter)))
     []))
+
+(defn enum->keyword [^Enum e]
+  (keyword (.name e)))

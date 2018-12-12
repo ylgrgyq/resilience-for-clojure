@@ -90,6 +90,9 @@
   If returned long is negative, it means that you failed to reserve permission,"
   (.reservePermission limiter (Duration/ofMillis timeout-millis)))
 
+(defn event-pulisher [^RateLimiter limiter]
+  (.getEventPublisher limiter))
+
 (defn metrics
   "Get the Metrics of this RateLimiter."
   [^RateLimiter limiter]

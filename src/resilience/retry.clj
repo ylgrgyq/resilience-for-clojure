@@ -72,6 +72,9 @@
 (defn config [^Retry retry]
   (.getRetryConfig retry))
 
+(defn event-pulisher [^Retry retry]
+  (.getEventPublisher retry))
+
 (defn metrics
   "Get the Metrics of this Retry"
   [^Retry retry]

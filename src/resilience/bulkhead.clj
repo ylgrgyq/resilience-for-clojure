@@ -62,6 +62,9 @@
   [^Bulkhead breaker]
   (.getBulkheadConfig breaker))
 
+(defn event-pulisher [^Bulkhead bulkhead]
+  (.getEventPublisher bulkhead))
+
 (defn metrics
   "Get the BulkheadConfig of this Bulkhead"
   [^Bulkhead breaker]
