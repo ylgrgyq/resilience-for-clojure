@@ -39,7 +39,7 @@
             testing-fn (to-fn (do (vswap! retry-times inc) (fail)))]
         (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
 
-        (breaker/listen-on-any-event testing-breaker (reify CircuitBreakerEventListener
+        (breaker/listen-on-all-event testing-breaker (reify CircuitBreakerEventListener
                                                        (on-success [this name elapsed-millis]
                                                          (println "success" name elapsed-millis))
                                                        (on-error [this name throwable elapsed-millis]
@@ -139,4 +139,4 @@
   (breaker/listen-on-ignored-error my-breaker listener)
   (breaker/listen-on-call-not-permitted my-breaker listener)
 
-  (breaker/listen-on-any-event my-breaker listener))
+  (breaker/listen-on-all-event my-breaker listener))

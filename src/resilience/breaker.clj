@@ -194,7 +194,7 @@
   (let [pub (.getEventPublisher breaker)]
     (.onCallNotPermitted pub (generate-consumer event-listener))))
 
-(defn listen-on-any-event [^CircuitBreaker breaker event-listener]
+(defn listen-on-all-event [^CircuitBreaker breaker event-listener]
   (let [pub (.getEventPublisher breaker)]
     (.onEvent pub (generate-consumer event-listener))))
 

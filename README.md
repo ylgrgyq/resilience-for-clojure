@@ -198,7 +198,7 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
     (do-some-monitoring-stuff cb state metrics)))
 ```
 
-### Consume emitted events
+## Consume emitted events
 
 `CircuitBreaker`, `RateLimiter`, `Cache` and `Retry` components emit a stream of events which can be consumed.
 
@@ -215,38 +215,38 @@ Still take `CircuitBreaker` as an example.
    :ring-buffer-size-in-closed-state 30
    :wait-millis-in-open-state 1000})
 
-
-;; listen success event
+;; then you can add listener to the circuit breaker
+;; listen on success event
 (breaker/listen-on-success my-breaker
   (reify CircuitBreakerEventListener
     (on-success [this name elapsed-millis]
       (log/info ...))))
 
-;; listen error event
+;; listen on error event
 (breaker/listen-on-error my-breaker
   (reify CircuitBreakerEventListener
     (on-error [this breaker-name throwable elapsed-millis]
       (log/info ...))))
 
-;; listen state transition event
+;; listen on state transition event
 (breaker/listen-on-state-transition my-breaker
   (reify CircuitBreakerEventListener
     (on-state-transition [this breaker-name from-state to-state]
       (log/info ...))))
 
-;; listen reset event
+;; listen on reset event
 (breaker/listen-on-reset my-breaker
   (reify CircuitBreakerEventListener
     (on-reset [this breaker-name]
       (log/info ...))))
 
-;; listen ignored error event
+;; listen on ignored error event
 (breaker/listen-on-ignored-error my-breaker
   (reify CircuitBreakerEventListener
     (on-ignored-error [this breaker-name throwable elapsed-millis]
       (log/info ...))))
 
-;; listen call not permitted event
+;; listen on call not permitted event
 (breaker/listen-on-call-not-permitted my-breaker
   (reify CircuitBreakerEventListener
     (on-call-not-permitted [this breaker-name]
@@ -260,7 +260,7 @@ Still take `CircuitBreaker` as an example.
                    (log/info ...))
                  (on-state-transition [this breaker-name from-state to-state]
                    (log/info ...))
-                 (on-reset [this name]
+                 (on-reset [this breaker-name]
                    (log/info ...))
                  (on-ignored-error [this breaker-name throwable elapsed-millis]
                    (log/info ...))
@@ -274,6 +274,6 @@ Still take `CircuitBreaker` as an example.
   (breaker/listen-on-ignored-error my-breaker listener)
   (breaker/listen-on-call-not-permitted my-breaker listener)
 
-  ;; and you can listen all these events on one call
-  (breaker/listen-on-any-event my-breaker listener))
+  ;; or listen all these events on one call
+  (breaker/listen-on-all-events my-breaker listener))
 ```
