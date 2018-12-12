@@ -1,6 +1,6 @@
 # Resilience for Clojure
 
-A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard).
+A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard). Many thanks for both of them.
 
 ## Usage Examples
 
@@ -8,6 +8,7 @@ As you may expected, it has [Circuit Breaker](https://github.com/ylgrgyq/resilie
 
 And there's also an example to show how to use them all together [here](https://github.com/ylgrgyq/resilience-for-clojure#use-the-resilience-family-all-together) and how to handle exceptions [here](https://github.com/ylgrgyq/resilience-for-clojure#exception-handling).
 
+Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojure#registry) to create a `Registry` to collect `Circuit Breaker`, `Retry`, `Rate Limiter` and `Bulkhead` that scattered everywhere and manage them together. And [examples](https://github.com/ylgrgyq/resilience-for-clojure#consume-emitted-events) to set listeners to consume events from your `Circuit Breaker`, `Retry` etc. 
 
 ### Circuit Breaker
 
@@ -198,9 +199,9 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
     (do-some-monitoring-stuff cb state metrics)))
 ```
 
-## Consume emitted events
+### Consume emitted events
 
-`CircuitBreaker`, `RateLimiter`, `Cache` and `Retry` components emit a stream of events which can be consumed.
+`CircuitBreaker`, `RateLimiter`, and `Retry` components emit a stream of events which can be consumed.
 
 Still take `CircuitBreaker` as an example. 
 
