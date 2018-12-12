@@ -1,5 +1,5 @@
-(defproject resilience-for-clojure "0.1.0-SNAPSHOT"
-  :description "A clojure wrapper for Resilience4j" 
+(defproject resilience-for-clojure "0.1.0"
+  :description "A clojure wrapper over Resilience4j" 
   :url "https://github.com/ylgrgyq/resilience-for-clojure"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
