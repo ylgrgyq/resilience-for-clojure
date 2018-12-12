@@ -1,5 +1,5 @@
 (ns resilience.breaker-test
-  (:refer-clojure :exclude [name])
+  (:refer-clojure :exclude [name reset!])
   (:require [clojure.test :refer :all]
             [resilience.breaker :refer :all]
             [resilience.core :as resilience])
@@ -65,5 +65,6 @@
       ;; open circuit again all request will be allowed during half open state until ring buffer is full
       (doseq [_ (range (:ring-buffer-size-in-half-open-state breaker-basic-config))]
         (resilience/execute-with-breaker testing-breaker (success)))
-      (is (= :CLOSED (state testing-breaker))))))
+      (is (= :CLOSED (state testing-breaker)))
+      (reset! testing-breaker))))
 

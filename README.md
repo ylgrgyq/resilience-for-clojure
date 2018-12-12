@@ -198,4 +198,20 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
     (do-some-monitoring-stuff cb state metrics)))
 ```
 
+### Listener
 
+```
+(breaker/listen-on-state-transition testing-breaker (reify CircuitBreakerEventListener
+                                           (on-success [this name elapsed-millis]
+                                             (println "success" name elapsed-millis))
+                                           (on-error [this name throwable elapsed-millis]
+                                             (println "error" name throwable elapsed-millis))
+                                           (on-state-transition [this name from-state to-state]
+                                             (println "state trans" name from-state to-state))
+                                           (on-reset [this name]
+                                             (println "reset called" name))
+                                           (on-ignored-error [this name throwable elapsed-millis]
+                                             (println "error ignored" name throwable elapsed-millis))
+                                           (on-call-not-permitted [this name]
+                                             (println "on call not permitted" name))))
+```

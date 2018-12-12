@@ -68,7 +68,7 @@
 
 (defmacro with-resilience-family [family-members & body]
   (let [wrappers (map #(let [[k v] %]
-                         (list (symbol (str "game-lobby.resilience.core/with-" (name k))) v))
+                         (list (symbol (str "resilience.core/with-" (name k))) v))
                       (partition-all 2 family-members))]
 
     `(->> (to-fn ~@body)
