@@ -56,14 +56,44 @@
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (rate-limiter ~name-in-string ~config))))
 
-(defn name [^RateLimiter breaker]
-  (.getName breaker))
+(defn name
+  "Get the name of this RateLimiter"
+  [^RateLimiter limiter]
+  (.getName limiter))
 
-(defn config [^RateLimiter breaker]
-  (.getRateLimiterConfig breaker))
+(defn config
+  "Get the RateLimiterConfig of this RateLimiter"
+  [^RateLimiter limiter]
+  (.getRateLimiterConfig limiter))
 
-(defn metrics [^RateLimiter breaker]
-  (let [metric (.getMetrics breaker)]
+(defn change-timeout-millis!
+  "Dynamic rate limiter configuration change.
+   This method allows to change timeout-millis of current limiter.
+   NOTE! New timeout-millis won't affect threads that are currently waiting for permission."
+  [^RateLimiter limiter timeout-millis]
+  (.changeTimeoutDuration limiter (Duration/ofMillis timeout-millis)))
+
+(defn change-limit-for-period!
+  "Dynamic rate limiter configuration change.
+   This method allows to change count of permissions available during refresh period.
+   NOTE! New limit won't affect current period permissions and will apply only from next one."
+  [^RateLimiter limiter limit]
+  (.changeLimitForPeriod limiter (int limit)))
+
+(defn acquire-permission!
+  "Acquires a permission from this rate limiter, blocking until one is available."
+  [^RateLimiter limiter timeout-millis]
+  (.getPermission limiter (Duration/ofMillis timeout-millis)))
+
+(defn reserve-permission! [^RateLimiter limiter timeout-millis]
+  "Reserves a permission from this rate limiter and returns nanoseconds you should wait for it.
+  If returned long is negative, it means that you failed to reserve permission,"
+  (.reservePermission limiter (Duration/ofMillis timeout-millis)))
+
+(defn metrics
+  "Get the Metrics of this RateLimiter."
+  [^RateLimiter limiter]
+  (let [metric (.getMetrics limiter)]
     {:number-of-waiting-threads (.getNumberOfWaitingThreads metric)
      :available-permissions (.getAvailablePermissions metric)}))
 

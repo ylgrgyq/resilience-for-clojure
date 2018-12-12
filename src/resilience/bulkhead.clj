@@ -52,13 +52,19 @@
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (bulkhead ~name-in-string ~config))))
 
-(defn name [^Bulkhead breaker]
+(defn name
+  "Get the name of this Bulkhead"
+  [^Bulkhead breaker]
   (.getName breaker))
 
-(defn config [^Bulkhead breaker]
+(defn config
+  "Get the Metrics of this Bulkhead"
+  [^Bulkhead breaker]
   (.getBulkheadConfig breaker))
 
-(defn metrics [^Bulkhead breaker]
+(defn metrics
+  "Get the BulkheadConfig of this Bulkhead"
+  [^Bulkhead breaker]
   (let [metric (.getMetrics breaker)]
     {:available-concurrent-calls (.getAvailableConcurrentCalls metric)}))
 

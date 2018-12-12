@@ -64,13 +64,17 @@
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (retry ~name-in-string ~config))))
 
-(defn name [^Retry retry]
+(defn name
+  "Get the name of this Retry."
+  [^Retry retry]
   (.getName retry))
 
 (defn config [^Retry retry]
   (.getRetryConfig retry))
 
-(defn metrics [^Retry retry]
+(defn metrics
+  "Get the Metrics of this Retry"
+  [^Retry retry]
   (let [metric (.getMetrics retry)]
     {:number-of-successful-calls-without-retry-attemp (.getNumberOfSuccessfulCallsWithoutRetryAttempt metric)
      :number-of-failed-calls-without-retry-attemp (.getNumberOfFailedCallsWithoutRetryAttempt metric)
