@@ -8,8 +8,10 @@
 
 ;; breaker
 
-(defmacro execute-with-breaker [^CircuitBreaker breaker & body]
-  `(.executeCallable ~breaker ^Callable (fn [] (do ~@body))))
+(defmacro execute-with-breaker [breaker & body]
+  (let [breaker (vary-meta breaker assoc :tag `CircuitBreaker)
+        f (with-meta `(fn [] (do ~@body)) {:tag `Callable})]
+    `(.executeCallable ~breaker ~f)))
 
 (defn with-breaker [^CircuitBreaker breaker f]
   (CircuitBreaker/decorateCallable breaker f))
@@ -51,15 +53,38 @@
 
 ;; gather together
 
-(defn execute [^Callable f]
-  (.call f))
+(defmacro execute* [f]
+  (let [f (vary-meta f assoc :tag `Callable)]
+    `(.call ^Callable ~f)))
+
+(defmacro execute
+  [execute-body & args]
+  `(->> (fn [] ~execute-body)
+        ~@args
+        execute*))
 
 (defmacro to-fn [& body]
   `(fn [] (do ~@body)))
 
 (defmacro with-resilience-family [family-members & body]
-  (concat `(->> (to-fn ~@body))
-          (map #(let [[k v] %]
-                  (list (symbol (str "resilience.core/with-" (name k))) v))
-               family-members)
-          (list `(execute))))
+  (let [wrappers (map #(let [[k v] %]
+                         (list (symbol (str "game-lobby.resilience.core/with-" (name k))) v))
+                      (partition-all 2 family-members))]
+
+    `(->> (to-fn ~@body)
+          ~@wrappers
+          execute*)))
+
+(defn- recover-from* [exception failover-fn wraped-fn]
+  (let [wraped-fn (vary-meta wraped-fn assoc :tag `Callable)]
+    `(fn []
+       (try
+         (.call ~wraped-fn)
+         (catch ~exception ex#
+           (~failover-fn ex#))))))
+
+(defmacro recover-from [exception failover-fn wraped-fn]
+  (recover-from* exception failover-fn wraped-fn))
+
+(defmacro recover [failover-fn wraped-fn]
+  (recover-from* 'Exception failover-fn wraped-fn))
