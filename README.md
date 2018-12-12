@@ -4,6 +4,11 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 
 ## Usage Examples
 
+As you may expected, it has [Circuit Breaker](https://github.com/ylgrgyq/resilience-for-clojure#circuit-breaker), [Retry](https://github.com/ylgrgyq/resilience-for-clojure#retry), [Bulkhead](https://github.com/ylgrgyq/resilience-for-clojure#bulkhead), [Rate Limiter](https://github.com/ylgrgyq/resilience-for-clojure#rate-limiter).
+
+And there's also an example to show how to use them all together [here](https://github.com/ylgrgyq/resilience-for-clojure#use-the-resilience-family-all-together) and how to handle exceptions [here](https://github.com/ylgrgyq/resilience-for-clojure#exception-handling).
+
+
 ### Circuit Breaker
 
 ```clojure
@@ -127,9 +132,9 @@ Please note that the second parameter passed to `with-resilience-family` is a li
 
 ### Exception Handling
 
-What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exception which will be thrown when certain condition matches. Such as when circuit breaker open, the subsequent requests will trigger `CircuitBreakerOpenException` from circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel request will trigger `BulkheadFullException` from bulkhead. What is matters here is that you may need to handle all these exceptions respectively which may force you to add `try ... catch` block to protect your codes and make them not as concise as above example. After adding exception handling codes, the example before may looks like this:
+What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exception which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle all these exceptions respectively which may force you to add `try ... catch` blocks to protect your codes then make them not as concise as above examples. After adding exception handling stuff, the example before looks like this:
 
-```
+```clojure
 (try
   (resilience/with-resilience-family
     [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
@@ -147,7 +152,7 @@ What we missing until now is how to handle exceptions thrown by resilience famil
 
 If you don't like to use `try ... catch` block, you can choose to use `execute` with `recover` form like this:
 
-```
+```clojure
 (resilience/execute
   (do (do-something)
       (do-another-thing))
