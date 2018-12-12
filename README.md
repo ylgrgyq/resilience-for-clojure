@@ -235,23 +235,9 @@ Still take `CircuitBreaker` as an example.
     (on-state-transition [this breaker-name from-state to-state]
       (log/info ...))))
 
-;; listen on reset event
-(breaker/listen-on-reset my-breaker
-  (reify CircuitBreakerEventListener
-    (on-reset [this breaker-name]
-      (log/info ...))))
-
-;; listen on ignored error event
-(breaker/listen-on-ignored-error my-breaker
-  (reify CircuitBreakerEventListener
-    (on-ignored-error [this breaker-name throwable elapsed-millis]
-      (log/info ...))))
-
-;; listen on call not permitted event
-(breaker/listen-on-call-not-permitted my-breaker
-  (reify CircuitBreakerEventListener
-    (on-call-not-permitted [this breaker-name]
-      (log/info ...))))
+;; I'm not going to list all the available events you can listen on
+;; please check the doc or the codes to get more details
+...
 
 ;; and you can also create a big listener to catch all these events
 (let [listener (reify CircuitBreakerEventListener
@@ -261,19 +247,12 @@ Still take `CircuitBreaker` as an example.
                    (log/info ...))
                  (on-state-transition [this breaker-name from-state to-state]
                    (log/info ...))
-                 (on-reset [this breaker-name]
-                   (log/info ...))
-                 (on-ignored-error [this breaker-name throwable elapsed-millis]
-                   (log/info ...))
-                 (on-call-not-permitted [this breaker-name]
-                   (log/info ...)))]
+                 ...)]
   ;; you can listen on events separately
   (breaker/listen-on-success my-breaker listener)
   (breaker/listen-on-error my-breaker listener)
   (breaker/listen-on-state-transition my-breaker listener)
-  (breaker/listen-on-reset my-breaker listener)
-  (breaker/listen-on-ignored-error my-breaker listener)
-  (breaker/listen-on-call-not-permitted my-breaker listener)
+  ...
 
   ;; or listen all these events on one call
   (breaker/listen-on-all-events my-breaker listener))
