@@ -109,10 +109,59 @@ A wrapper over the great library [_Resilience4j_](https://github.com/resilience4
 
 ;; use them all together
 (resilience/with-resilience-family 
-  {:bulkhead my-bulkhead :retry my-retry :breaker my-breaker :rate-limiter my-ratelimiter}
+  [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
   (do-something)
   (do-another-thing))
+
+;; an alternative way
+(resilience/execute
+  (do (do-something)
+      (do-another-thing))
+  (resilience/with-retry my-retry)
+  (resilience/with-breaker my-breaker)
+  (resilience/with-bulkhead my-bulkhead)
+  (resilience/with-rate-limiter my-ratelimiter))
 ```
+
+Please note that the second parameter passed to `with-resilience-family` is a list. It means the order of the family members is matters. Such as usually you need to put retry policy before circuit breaker to insure that when the circuit breaker is open you do not retry further in vain. And the same is for using `execute` in which you need to mind the order of those `with-*` forms.
+
+### Exception Handling
+
+What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exception which will be thrown when certain condition matches. Such as when circuit breaker open, the subsequent requests will trigger `CircuitBreakerOpenException` from circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel request will trigger `BulkheadFullException` from bulkhead. What is matters here is that you may need to handle all these exceptions respectively which may force you to add `try ... catch` block to protect your codes and make them not as concise as above example. After adding exception handling codes, the example before may looks like this:
+
+```
+(try
+  (resilience/with-resilience-family
+    [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
+    (do-something)
+    (do-another-thing))
+  (catch CircuitBreakerOpenException ex
+    (log-circuit-breaker-open-and-return-a-fallback-value ex))
+  (catch BulkheadFullException ex
+    (log-bulkhead-full-and-return-a-fallback-value ex))
+  (catch RequestNotPermitted ex
+    (log-request-not-permitted-and-return-a-fallback-value ex))
+  (catch Exception ex
+    (log-unexpected-exception-and-return-a-fallback-value ex)))
+```
+
+If you don't like to use `try ... catch` block, you can choose to use `execute` with `recover` form like this:
+
+```
+(resilience/execute
+  (do (do-something)
+      (do-another-thing))
+  (resilience/with-retry my-retry)
+  (resilience/with-breaker my-breaker)
+  (resilience/with-bulkhead my-bulkhead)
+  (resilience/with-rate-limiter my-ratelimiter)
+  (resilience/recover-from CircuitBreakerOpenException log-circuit-breaker-open-and-return-a-fallback-value)
+  (resilience/recover-from BulkheadFullException log-bulkhead-full-and-return-a-fallback-value)
+  (resilience/recover-from RequestNotPermitted log-request-not-permitted-and-return-a-fallback-value)
+  (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
+```
+
+There's not much difference between them. Usually you can just choose any one style of them and stick on it.
 
 ### Registry
 
