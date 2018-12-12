@@ -198,20 +198,82 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
     (do-some-monitoring-stuff cb state metrics)))
 ```
 
-### Listener
+### Consume emitted events
 
-```
-(breaker/listen-on-state-transition testing-breaker (reify CircuitBreakerEventListener
-                                           (on-success [this name elapsed-millis]
-                                             (println "success" name elapsed-millis))
-                                           (on-error [this name throwable elapsed-millis]
-                                             (println "error" name throwable elapsed-millis))
-                                           (on-state-transition [this name from-state to-state]
-                                             (println "state trans" name from-state to-state))
-                                           (on-reset [this name]
-                                             (println "reset called" name))
-                                           (on-ignored-error [this name throwable elapsed-millis]
-                                             (println "error ignored" name throwable elapsed-millis))
-                                           (on-call-not-permitted [this name]
-                                             (println "on call not permitted" name))))
+`CircuitBreaker`, `RateLimiter`, `Cache` and `Retry` components emit a stream of events which can be consumed.
+
+Still take `CircuitBreaker` as an example. 
+
+```clojure
+(require '[resilience.breaker :as breaker]
+         '[resilience.core :as resilience])
+(import '(resilience.breaker CircuitBreakerEventListener))
+
+;; define a breaker like before
+(breaker/defbreaker my-breaker 
+  {:failure-rate-threshold 80
+   :ring-buffer-size-in-closed-state 30
+   :wait-millis-in-open-state 1000})
+
+
+;; listen success event
+(breaker/listen-on-success my-breaker
+  (reify CircuitBreakerEventListener
+    (on-success [this name elapsed-millis]
+      (log/info ...))))
+
+;; listen error event
+(breaker/listen-on-error my-breaker
+  (reify CircuitBreakerEventListener
+    (on-error [this breaker-name throwable elapsed-millis]
+      (log/info ...))))
+
+;; listen state transition event
+(breaker/listen-on-state-transition my-breaker
+  (reify CircuitBreakerEventListener
+    (on-state-transition [this breaker-name from-state to-state]
+      (log/info ...))))
+
+;; listen reset event
+(breaker/listen-on-reset my-breaker
+  (reify CircuitBreakerEventListener
+    (on-reset [this breaker-name]
+      (log/info ...))))
+
+;; listen ignored error event
+(breaker/listen-on-ignored-error my-breaker
+  (reify CircuitBreakerEventListener
+    (on-ignored-error [this breaker-name throwable elapsed-millis]
+      (log/info ...))))
+
+;; listen call not permitted event
+(breaker/listen-on-call-not-permitted my-breaker
+  (reify CircuitBreakerEventListener
+    (on-call-not-permitted [this breaker-name]
+      (log/info ...))))
+
+;; and you can also create a big listener to catch all these events
+(let [listener (reify CircuitBreakerEventListener
+                 (on-success [this breaker-name elapsed-millis]
+                   (log/info ...))
+                 (on-error [this breaker-name throwable elapsed-millis]
+                   (log/info ...))
+                 (on-state-transition [this breaker-name from-state to-state]
+                   (log/info ...))
+                 (on-reset [this name]
+                   (log/info ...))
+                 (on-ignored-error [this breaker-name throwable elapsed-millis]
+                   (log/info ...))
+                 (on-call-not-permitted [this breaker-name]
+                   (log/info ...)))]
+  ;; you can listen on events separately
+  (breaker/listen-on-success my-breaker listener)
+  (breaker/listen-on-error my-breaker listener)
+  (breaker/listen-on-state-transition my-breaker listener)
+  (breaker/listen-on-reset my-breaker listener)
+  (breaker/listen-on-ignored-error my-breaker listener)
+  (breaker/listen-on-call-not-permitted my-breaker listener)
+
+  ;; and you can listen all these events on one call
+  (breaker/listen-on-any-event my-breaker listener))
 ```

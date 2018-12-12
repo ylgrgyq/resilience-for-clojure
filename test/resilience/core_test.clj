@@ -5,7 +5,8 @@
             [resilience.bulkhead :as bulkhead]
             [resilience.core :refer :all])
   (:import (io.github.resilience4j.circuitbreaker CircuitBreakerOpenException)
-           (clojure.lang ExceptionInfo)))
+           (clojure.lang ExceptionInfo)
+           (resilience.breaker CircuitBreakerEventListener)))
 
 (defn- fail [& _]
   (throw (ex-info "expected exception" {:expected true})))
@@ -38,6 +39,19 @@
             testing-fn (to-fn (do (vswap! retry-times inc) (fail)))]
         (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
 
+        (breaker/listen-on-any-event testing-breaker (reify CircuitBreakerEventListener
+                                                       (on-success [this name elapsed-millis]
+                                                         (println "success" name elapsed-millis))
+                                                       (on-error [this name throwable elapsed-millis]
+                                                         (println "error" name throwable elapsed-millis))
+                                                       (on-state-transition [this name from-state to-state]
+                                                         (println "state trans" name from-state to-state))
+                                                       (on-reset [this name]
+                                                         (println "reset called" name))
+                                                       (on-ignored-error [this name throwable elapsed-millis]
+                                                         (println "error ignored" name throwable elapsed-millis))
+                                                       (on-call-not-permitted [this name]
+                                                         (println "on call not permitted" name))))
         (doseq [_ (range max-failed-allowed)]
           (is (= (execute
                    (testing-fn)
@@ -96,5 +110,33 @@
 
         (is (= (* (:max-attempts retry-config)
                   max-failed-allowed)
-               @retry-times))))))
+               @retry-times))
 
+
+
+        ))))
+
+
+
+
+(let [listener (reify CircuitBreakerEventListener
+                 (on-success [this breaker-name elapsed-millis]
+                   (log/info ...))
+                 (on-error [this breaker-name throwable elapsed-millis]
+                   (log/info ...))
+                 (on-state-transition [this breaker-name from-state to-state]
+                   (log/info ...))
+                 (on-reset [this name]
+                   (log/info ...))
+                 (on-ignored-error [this breaker-name throwable elapsed-millis]
+                   (log/info ...))
+                 (on-call-not-permitted [this breaker-name]
+                   (log/info ...)))]
+  (breaker/listen-on-success my-breaker listener)
+  (breaker/listen-on-error my-breaker listener)
+  (breaker/listen-on-state-transition my-breaker listener)
+  (breaker/listen-on-reset my-breaker listener)
+  (breaker/listen-on-ignored-error my-breaker listener)
+  (breaker/listen-on-call-not-permitted my-breaker listener)
+
+  (breaker/listen-on-any-event my-breaker listener))
