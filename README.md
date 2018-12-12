@@ -8,7 +8,7 @@ As you may expected, it has [Circuit Breaker](https://github.com/ylgrgyq/resilie
 
 And there's also an example to show how to use them all together [here](https://github.com/ylgrgyq/resilience-for-clojure#use-the-resilience-family-all-together) and how to handle exceptions [here](https://github.com/ylgrgyq/resilience-for-clojure#exception-handling).
 
-Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojure#registry) to create a `Registry` to collect `Circuit Breaker`, `Retry`, `Rate Limiter` and `Bulkhead` that scattered everywhere and manage them together. And [examples](https://github.com/ylgrgyq/resilience-for-clojure#consume-emitted-events) to set listeners to consume events from your `Circuit Breaker`, `Retry`, `Rate Litmiter` to monitor their state in real time.
+Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojure#registry) to create a `Registry` to collect `Circuit Breaker`, `Retry`, `Rate Limiter` and `Bulkhead` that scattered everywhere and manage them together. And [examples](https://github.com/ylgrgyq/resilience-for-clojure#consume-emitted-events) to set listeners to consume events from your `Circuit Breaker`, `Retry`, `Rate Litmiter` to monitor their state or metrics in real time.
 
 ### Circuit Breaker
 
