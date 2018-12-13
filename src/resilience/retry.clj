@@ -1,7 +1,7 @@
 (ns resilience.retry
   (:refer-clojure :exclude [name])
   (:require [resilience.util :as u])
-  (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry)
+  (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry IntervalFunction)
            (java.time Duration)
            (java.util.function Predicate)
            (io.github.resilience4j.retry.event RetryOnSuccessEvent RetryOnRetryEvent
@@ -19,6 +19,10 @@
       (when-let [f (:retry-on-result opts)]
         (.retryOnResult config (reify Predicate
                                  (test [_ t] (f t)))))
+
+      (when-let [f (:interval-function opts)]
+        (.intervalFunction config ^IntervalFunction f))
+
       (when-let [f (:retry-on-exception opts)]
         (.retryOnException config (reify Predicate
                                     (test [_ t] (f t)))))
@@ -95,28 +99,28 @@
 (defmethod relay-event RetryOnRetryEvent
   [event-listener ^RetryOnRetryEvent event]
   (on-retry event-listener
-            (.getRateLimiterName event)
+            (.getName event)
             (.getNumberOfRetryAttempts event)
             (.getLastThrowable event)))
 
 (defmethod relay-event RetryOnSuccessEvent
   [event-listener ^RetryOnSuccessEvent event]
   (on-success event-listener
-              (.getRateLimiterName event)
+              (.getName event)
               (.getNumberOfRetryAttempts event)
               (.getLastThrowable event)))
 
 (defmethod relay-event RetryOnErrorEvent
   [event-listener ^RetryOnErrorEvent event]
   (on-error event-listener
-            (.getRateLimiterName event)
+            (.getName event)
             (.getNumberOfRetryAttempts event)
             (.getLastThrowable event)))
 
 (defmethod relay-event RetryOnIgnoredErrorEvent
   [event-listener ^RetryOnIgnoredErrorEvent event]
   (on-ignored-error event-listener
-                    (.getRateLimiterName event)
+                    (.getName event)
                     (.getNumberOfRetryAttempts event)
                     (.getLastThrowable event)))
 

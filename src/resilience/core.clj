@@ -6,11 +6,14 @@
            (io.github.resilience4j.timelimiter TimeLimiter)
            (java.util.function Supplier)))
 
+(defmacro to-fn [& body]
+  `(fn [] (do ~@body)))
+
 ;; breaker
 
 (defmacro execute-with-breaker [breaker & body]
   (let [breaker (vary-meta breaker assoc :tag `CircuitBreaker)
-        f (with-meta `(fn [] (do ~@body)) {:tag `Callable})]
+        f (with-meta `(to-fn ~@body) {:tag `Callable})]
     `(.executeCallable ~breaker ~f)))
 
 (defn with-breaker [^CircuitBreaker breaker f]
@@ -53,18 +56,15 @@
 
 ;; gather together
 
-(defmacro execute* [f]
+(defmacro execute-callable* [f]
   (let [f (vary-meta f assoc :tag `Callable)]
     `(.call ^Callable ~f)))
 
 (defmacro execute
   [execute-body & args]
-  `(->> (fn [] ~execute-body)
+  `(->> (to-fn ~execute-body)
         ~@args
-        execute*))
-
-(defmacro to-fn [& body]
-  `(fn [] (do ~@body)))
+        execute-callable*))
 
 (defmacro with-resilience-family [family-members & body]
   (let [wrappers (map #(let [[k v] %]
@@ -73,7 +73,7 @@
 
     `(->> (to-fn ~@body)
           ~@wrappers
-          execute*)))
+          execute-callable*)))
 
 (defn- recover-from* [exception failover-fn wraped-fn]
   (let [wraped-fn (vary-meta wraped-fn assoc :tag `Callable)]
