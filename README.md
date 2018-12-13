@@ -257,3 +257,7 @@ Still take `CircuitBreaker` as an example.
   ;; or listen all these events on one call
   (breaker/listen-on-all-events my-breaker listener))
 ```
+
+# License
+
+Copyright 2018 Rui Guo. Released under the [Apache 2.0 license](http://www.apache.org/licenses/LICENSE-2.0.html).
