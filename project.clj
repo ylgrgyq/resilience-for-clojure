@@ -1,8 +1,8 @@
 (defproject resilience-for-clojure "0.2.0-SNAPSHOT"
   :description "A clojure wrapper over Resilience4j" 
   :url "https://github.com/ylgrgyq/resilience-for-clojure"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:name "Apache License, Version 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [io.github.resilience4j/resilience4j-circuitbreaker "0.13.2"]
                  [io.github.resilience4j/resilience4j-ratelimiter "0.13.2"]
