@@ -1,6 +1,6 @@
 # Resilience for Clojure
 
-A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard). Many thanks for both of them.
+A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard). Many thanks to both of them.
 
 ## Usage Examples
 
