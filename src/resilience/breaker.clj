@@ -12,6 +12,8 @@
                                                         CircuitBreakerOnResetEvent CircuitBreakerOnCallNotPermittedEvent)))
 
 (defn ^CircuitBreakerConfig circuit-breaker-config [opts]
+  (u/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
+
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for circuit breaker."))
     (let [^CircuitBreakerConfig$Builder config (CircuitBreakerConfig/custom)]

@@ -1,9 +1,12 @@
 (ns resilience.timelimiter
   (:refer-clojure :exclude [name])
+  (:require [resilience.util :as u])
   (:import (java.time Duration)
            (io.github.resilience4j.timelimiter TimeLimiterConfig TimeLimiterConfig$Builder TimeLimiter)))
 
 (defn ^TimeLimiterConfig time-limiter-config [opts]
+  (u/verify-opt-map-keys-with-spec :timelimiter/time-limiter-config opts)
+
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for time limiter."))
     (let [^TimeLimiterConfig$Builder config (TimeLimiterConfig/custom)]

@@ -9,11 +9,12 @@
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RetryConfig retry-config [opts]
+  (u/verify-opt-map-keys-with-spec :retry/retry-config opts)
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for retry."))
     (let [^RetryConfig$Builder config (RetryConfig/custom)]
-      (when-let [attemp (:max-attempts opts)]
-        (.maxAttempts config attemp))
+      (when-let [attempts (:max-attempts opts)]
+        (.maxAttempts config (int attempts)))
       (when-let [wait-millis (:wait-millis opts)]
         (.waitDuration config (Duration/ofMillis wait-millis)))
       (when-let [f (:retry-on-result opts)]

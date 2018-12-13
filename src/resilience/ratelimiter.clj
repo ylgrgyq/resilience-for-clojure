@@ -8,6 +8,8 @@
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RateLimiterConfig rate-limiter-config [opts]
+  (u/verify-opt-map-keys-with-spec :ratelimiter/rate-limiter-config opts)
+
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for rate limiter."))
     (let [^RateLimiterConfig$Builder config (RateLimiterConfig/custom)]

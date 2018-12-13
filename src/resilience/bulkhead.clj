@@ -7,6 +7,8 @@
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^BulkheadConfig bulkhead-config [opts]
+  (u/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
+
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for bulkhead."))
     (let [^BulkheadConfig$Builder config (BulkheadConfig/custom)]
