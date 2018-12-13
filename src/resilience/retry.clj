@@ -3,7 +3,10 @@
   (:require [resilience.util :as u])
   (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry)
            (java.time Duration)
-           (java.util.function Predicate)))
+           (java.util.function Predicate)
+           (io.github.resilience4j.retry.event RetryOnSuccessEvent RetryOnRetryEvent
+                                               RetryOnErrorEvent RetryOnIgnoredErrorEvent)
+           (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RetryConfig retry-config [opts]
   (if (empty? opts)
@@ -72,14 +75,72 @@
 (defn config [^Retry retry]
   (.getRetryConfig retry))
 
-(defn event-pulisher [^Retry retry]
-  (.getEventPublisher retry))
-
 (defn metrics
   "Get the Metrics of this Retry"
   [^Retry retry]
   (let [metric (.getMetrics retry)]
-    {:number-of-successful-calls-without-retry-attemp (.getNumberOfSuccessfulCallsWithoutRetryAttempt metric)
-     :number-of-failed-calls-without-retry-attemp (.getNumberOfFailedCallsWithoutRetryAttempt metric)
-     :number-of-successful-calls-with-retry-attemp (.getNumberOfSuccessfulCallsWithRetryAttempt metric)
-     :number-of-failed-calls-with-retry-attemp (.getNumberOfFailedCallsWithRetryAttempt metric)}))
+    {:number-of-successful-calls-without-retry-attempt (.getNumberOfSuccessfulCallsWithoutRetryAttempt metric)
+     :number-of-failed-calls-without-retry-attempt (.getNumberOfFailedCallsWithoutRetryAttempt metric)
+     :number-of-successful-calls-with-retry-attempt (.getNumberOfSuccessfulCallsWithRetryAttempt metric)
+     :number-of-failed-calls-with-retry-attempt (.getNumberOfFailedCallsWithRetryAttempt metric)}))
+
+(defprotocol RetryEventListener
+  (on-retry [this retry-name number-of-retry-attempts last-throwable])
+  (on-success [this retry-name number-of-retry-attempts last-throwable])
+  (on-error [this retry-name number-of-retry-attempts last-throwable])
+  (on-ignored-error [this retry-name number-of-retry-attempts last-throwable]))
+
+(defmulti ^:private relay-event (fn [_ event] (class event)))
+
+(defmethod relay-event RetryOnRetryEvent
+  [event-listener ^RetryOnRetryEvent event]
+  (on-retry event-listener
+            (.getRateLimiterName event)
+            (.getNumberOfRetryAttempts event)
+            (.getLastThrowable event)))
+
+(defmethod relay-event RetryOnSuccessEvent
+  [event-listener ^RetryOnSuccessEvent event]
+  (on-success event-listener
+              (.getRateLimiterName event)
+              (.getNumberOfRetryAttempts event)
+              (.getLastThrowable event)))
+
+(defmethod relay-event RetryOnErrorEvent
+  [event-listener ^RetryOnErrorEvent event]
+  (on-error event-listener
+            (.getRateLimiterName event)
+            (.getNumberOfRetryAttempts event)
+            (.getLastThrowable event)))
+
+(defmethod relay-event RetryOnIgnoredErrorEvent
+  [event-listener ^RetryOnIgnoredErrorEvent event]
+  (on-ignored-error event-listener
+                    (.getRateLimiterName event)
+                    (.getNumberOfRetryAttempts event)
+                    (.getLastThrowable event)))
+
+(defmacro ^:private generate-consumer [event-listener]
+  `(reify EventConsumer
+     (consumeEvent [_ event#]
+       (relay-event ~event-listener event#))))
+
+(defn listen-on-retry [^Retry retry event-listener]
+  (let [pub (.getEventPublisher retry)]
+    (.onRetry pub (generate-consumer event-listener))))
+
+(defn listen-on-success [^Retry retry event-listener]
+  (let [pub (.getEventPublisher retry)]
+    (.onSuccess pub (generate-consumer event-listener))))
+
+(defn listen-on-error [^Retry retry event-listener]
+  (let [pub (.getEventPublisher retry)]
+    (.onError pub (generate-consumer event-listener))))
+
+(defn listen-on-ignored-error [^Retry retry event-listener]
+  (let [pub (.getEventPublisher retry)]
+    (.onIgnoredError pub (generate-consumer event-listener))))
+
+(defn listen-on-all-event [^Retry retry event-listener]
+  (let [pub (.getEventPublisher retry)]
+    (.onEvent pub (generate-consumer event-listener))))

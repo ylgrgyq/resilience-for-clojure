@@ -2,7 +2,10 @@
   (:refer-clojure :exclude [name])
   (:require [resilience.util :as u])
   (:import (java.time Duration)
-           (io.github.resilience4j.ratelimiter RateLimiterConfig RateLimiterConfig$Builder RateLimiterRegistry RateLimiter)))
+           (io.github.resilience4j.ratelimiter RateLimiterConfig RateLimiterConfig$Builder
+                                               RateLimiterRegistry RateLimiter)
+           (io.github.resilience4j.ratelimiter.event RateLimiterOnFailureEvent RateLimiterOnSuccessEvent)
+           (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RateLimiterConfig rate-limiter-config [opts]
   (if (empty? opts)
@@ -90,9 +93,6 @@
   If returned long is negative, it means that you failed to reserve permission,"
   (.reservePermission limiter (Duration/ofMillis timeout-millis)))
 
-(defn event-pulisher [^RateLimiter limiter]
-  (.getEventPublisher limiter))
-
 (defn metrics
   "Get the Metrics of this RateLimiter."
   [^RateLimiter limiter]
@@ -100,5 +100,33 @@
     {:number-of-waiting-threads (.getNumberOfWaitingThreads metric)
      :available-permissions (.getAvailablePermissions metric)}))
 
+(defprotocol RateLimiterEventListener
+  (on-success [this rate-limiter-name])
+  (on-failure [this rate-limiter-name]))
 
+(defmulti ^:private relay-event (fn [_ event] (class event)))
 
+(defmethod relay-event RateLimiterOnSuccessEvent
+  [event-listener ^RateLimiterOnSuccessEvent event]
+  (on-success event-listener (.getRateLimiterName event)))
+
+(defmethod relay-event RateLimiterOnFailureEvent
+  [event-listener ^RateLimiterOnFailureEvent event]
+  (on-failure event-listener (.getRateLimiterName event)))
+
+(defmacro ^:private generate-consumer [event-listener]
+  `(reify EventConsumer
+     (consumeEvent [_ event#]
+       (relay-event ~event-listener event#))))
+
+(defn listen-on-success [^RateLimiter limiter event-listener]
+  (let [pub (.getEventPublisher limiter)]
+    (.onSuccess pub (generate-consumer event-listener))))
+
+(defn listen-on-failure [^RateLimiter limiter event-listener]
+  (let [pub (.getEventPublisher limiter)]
+    (.onFailure pub (generate-consumer event-listener))))
+
+(defn listen-on-all-event [^RateLimiter limiter event-listener]
+  (let [pub (.getEventPublisher limiter)]
+    (.onEvent pub (generate-consumer event-listener))))
