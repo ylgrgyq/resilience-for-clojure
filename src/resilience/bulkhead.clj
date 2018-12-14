@@ -1,13 +1,14 @@
 (ns resilience.bulkhead
   (:refer-clojure :exclude [name])
-  (:require [resilience.util :as u])
+  (:require [resilience.util :as u]
+            [resilience.spec :as s])
   (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead)
            (io.github.resilience4j.bulkhead.event BulkheadOnCallRejectedEvent BulkheadOnCallFinishedEvent
                                                   BulkheadOnCallPermittedEvent)
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^BulkheadConfig bulkhead-config [opts]
-  (u/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
+  (s/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
 
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for bulkhead."))

@@ -10,10 +10,3 @@
 
 (defn enum->keyword [^Enum e]
   (keyword (.name e)))
-
-;; copied from https://github.com/sunng87/diehard
-(defn verify-opt-map-keys-with-spec [spec opt-map]
-  (let [parsed (s/conform spec opt-map)]
-    (if (= parsed ::s/invalid)
-      (throw (ex-info "Invalid input" (s/explain-data spec opt-map)))
-      parsed)))

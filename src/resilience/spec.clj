@@ -1,4 +1,4 @@
-(ns ^{:doc "Lots of ideas under this namespace copied from https://github.com/sunng87/diehard"}
+(ns ^{:doc "Lots of ideas under this namespace copied from https://github.com/sunng87/diehard/blob/0.7.2/src/diehard/spec.clj"}
   resilience.spec
   (:require [clojure.spec.alpha :as s])
   (:import (io.github.resilience4j.retry IntervalFunction)))
@@ -12,6 +12,20 @@
                                     opt
                                     (map (comp keyword name) opt-un)))
                       any?)))
+
+(defn verify-opt-map-keys-with-spec [spec opt-map]
+  (let [parsed (s/conform spec opt-map)]
+    (if (= parsed ::s/invalid)
+      (let [prefix "Invalid input:\n"
+            explain (s/explain-data spec opt-map)
+            msg (or (some->> explain
+                             (::s/problems)
+                             (map str)
+                             (clojure.string/join "\n")
+                             (str prefix))
+                    (str prefix opt-map))]
+        (throw (ex-info msg explain)))
+      parsed)))
 
 (def is-exception-class?
   #(isa? % Exception))

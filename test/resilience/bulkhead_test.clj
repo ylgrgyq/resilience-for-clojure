@@ -8,8 +8,8 @@
 
 (deftest test-bulkhead
   (let [bulkhead-config {:max-concurrent-calls 5
-                         :wait-millis          200}
-        testing-bulkhead (bulkhead "testing-bulkhead" bulkhead-config)]
+                         :max-wait-millis      200}]
+    (defbulkhead testing-bulkhead bulkhead-config)
     (testing "bulkhead wait timeout"
       (let [latch (CountDownLatch. (:max-concurrent-calls bulkhead-config))
             done (CountDownLatch. 1)]
@@ -18,7 +18,7 @@
             (try
               (resilience/execute-with-bulkhead testing-bulkhead
                                                 (.countDown latch)
-                                                (Thread/sleep (* 2 (:wait-millis bulkhead-config)))
+                                                (Thread/sleep (* 2 (:max-wait-millis bulkhead-config)))
                                                 (.await done))
               (catch Exception ex
                 (is false)))))
@@ -27,5 +27,5 @@
           (is (thrown? BulkheadFullException
                        (resilience/execute-with-bulkhead testing-bulkhead
                                                          (throw (IllegalStateException. "Can't be here")))))
-          (is (>= (- (System/nanoTime) start) (:wait-millis bulkhead-config))))
+          (is (>= (- (System/nanoTime) start) (:max-wait-millis bulkhead-config))))
         (.countDown done)))))

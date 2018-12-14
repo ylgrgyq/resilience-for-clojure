@@ -1,6 +1,7 @@
 (ns resilience.retry
   (:refer-clojure :exclude [name])
-  (:require [resilience.util :as u])
+  (:require [resilience.util :as u]
+            [resilience.spec :as s])
   (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry IntervalFunction)
            (java.time Duration)
            (java.util.function Predicate)
@@ -9,7 +10,7 @@
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RetryConfig retry-config [opts]
-  (u/verify-opt-map-keys-with-spec :retry/retry-config opts)
+  (s/verify-opt-map-keys-with-spec :retry/retry-config opts)
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for retry."))
     (let [^RetryConfig$Builder config (RetryConfig/custom)]

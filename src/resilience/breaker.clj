@@ -1,6 +1,7 @@
 (ns resilience.breaker
   (:refer-clojure :exclude [name reset!])
-  (:require [resilience.util :as u])
+  (:require [resilience.util :as u]
+            [resilience.spec :as s])
   (:import (io.github.resilience4j.circuitbreaker CircuitBreakerConfig CircuitBreakerConfig$Builder
                                                   CircuitBreakerRegistry CircuitBreaker CircuitBreaker$StateTransition)
            (java.time Duration)
@@ -12,7 +13,7 @@
                                                         CircuitBreakerOnResetEvent CircuitBreakerOnCallNotPermittedEvent)))
 
 (defn ^CircuitBreakerConfig circuit-breaker-config [opts]
-  (u/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
+  (s/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
 
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for circuit breaker."))
