@@ -45,7 +45,15 @@
       ;; let circuit open
       (let-breaker-open testing-breaker
                         (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
-                                          (:failure-rate-threshold breaker-basic-config))))
+                                          (:failure-rate-threshold breaker-basic-config)))
+
+      (is (= {:failure-rate                  (:failure-rate-threshold breaker-basic-config)
+              :number-of-buffered-calls      (:ring-buffer-size-in-closed-state breaker-basic-config)
+              :number-of-failed-calls        (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)
+              :number-of-not-permitted-calls 1,
+              :max-number-of-buffered-calls  (:ring-buffer-size-in-closed-state breaker-basic-config)
+              :number-of-successful-calls    (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)}
+             (metrics testing-breaker))))
 
     (testing "breaker from HALF_OPEN to OPEN"
       ;; wait circuit transfer to half open
