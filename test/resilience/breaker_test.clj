@@ -79,5 +79,84 @@
       (transition-to-closed-state! testing-breaker)
       (is (= :CLOSED (state testing-breaker)))
       (transition-to-open-state! testing-breaker)
-      (is (= :OPEN (state testing-breaker))))))
+      (is (= :OPEN (state testing-breaker))))
+
+    (testing "consumer"
+      (let [on-success-times (atom 0)
+            on-success-fn (fn [_] (swap! on-success-times inc))
+            on-error-times (atom 0)
+            on-error-fn (fn [throwable _]
+                          (is (:expected (ex-data throwable)))
+                          (swap! on-error-times inc))
+            on-state-transition-times (atom 0)
+            on-state-transition-fn (fn [from to]
+                                     (swap! on-state-transition-times inc)
+                                     (is (= :CLOSED from))
+                                     (is (= :OPEN to)))
+            on-reset-times (atom 0)
+            on-reset-fn (fn [] (swap! on-reset-times inc))
+            on-ignored-error-times (atom 0)
+            on-ignored-error-fn (fn [_ _]
+                                  (swap! on-ignored-error-times inc))
+            on-call-not-permitted-times (atom 0)
+            on-call-not-permitted-fn (fn []
+                                       (swap! on-call-not-permitted-times inc))]
+        (defbreaker testing-breaker (assoc breaker-basic-config
+                                      :ignore-exceptions [IllegalStateException]
+                                      :automatic-transfer-from-open-to-half-open? false))
+
+        (set-on-success-event-consumer! testing-breaker on-success-fn)
+        (set-on-error-event-consumer! testing-breaker on-error-fn)
+        (set-on-state-transition-event-consumer! testing-breaker on-state-transition-fn)
+        (set-on-reset-event-consumer! testing-breaker on-reset-fn)
+        (set-on-ignored-error-event! testing-breaker on-ignored-error-fn)
+        (set-on-call-not-permitted-consumer! testing-breaker on-call-not-permitted-fn)
+
+        (set-on-all-event-consumer! testing-breaker
+                                    {:on-success on-success-fn
+                                     :on-error on-error-fn
+                                     :on-state-transition on-state-transition-fn
+                                     :on-reset on-reset-fn
+                                     :on-ignored-error on-ignored-error-fn
+                                     :on-call-not-permitted on-call-not-permitted-fn})
+
+        (reset! testing-breaker)
+        ;; fill the ring buffer for closed state
+        (is (= :CLOSED (state testing-breaker)))
+        (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
+
+        (try (resilience/execute-with-breaker testing-breaker (throw (IllegalStateException. "ignored exception")))
+             (catch IllegalStateException ex
+               (is (some? ex))))
+
+        ;; let circuit open
+        (let-breaker-open testing-breaker
+                          (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
+                                            (:failure-rate-threshold breaker-basic-config)))
+
+        (is (= @on-success-times 60))
+        (is (= @on-error-times 30))
+        (is (= @on-state-transition-times 2))
+        (is (= @on-reset-times 2))
+        (is (= @on-ignored-error-times 2))
+        (is (= @on-call-not-permitted-times 2))))))
+
+(deftest test-registry
+  (let [breaker-basic-config {:failure-rate-threshold                     50.0
+                              :ring-buffer-size-in-closed-state           30
+                              :ring-buffer-size-in-half-open-state        20
+                              :wait-millis-in-open-state                  1000}]
+    (defregistry testing-registry breaker-basic-config)
+    (defbreaker testing-breaker {:registry testing-registry})
+
+    (testing "breaker from CLOSED to OPEN and get breaker from registry"
+      ;; fill the ring buffer for closed state
+      (is (= :CLOSED (state testing-breaker)))
+      (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
+
+      ;; let circuit open
+      (let-breaker-open testing-breaker
+                        (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
+                                          (:failure-rate-threshold breaker-basic-config)))
+      (is (= [testing-breaker] (get-all-breakers testing-registry))))))
 
