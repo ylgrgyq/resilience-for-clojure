@@ -5,8 +5,7 @@
   (:import (io.github.resilience4j.retry RetryConfig RetryConfig$Builder RetryRegistry Retry IntervalFunction)
            (java.time Duration)
            (java.util.function Predicate)
-           (io.github.resilience4j.retry.event RetryOnSuccessEvent RetryOnRetryEvent
-                                               RetryOnErrorEvent RetryOnIgnoredErrorEvent)
+           (io.github.resilience4j.retry.event RetryEvent RetryEvent$Type)
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RetryConfig retry-config [opts]
@@ -90,63 +89,95 @@
      :number-of-successful-calls-with-retry-attempt (.getNumberOfSuccessfulCallsWithRetryAttempt metric)
      :number-of-failed-calls-with-retry-attempt (.getNumberOfFailedCallsWithRetryAttempt metric)}))
 
-(defprotocol RetryEventListener
-  (on-retry [this retry-name number-of-retry-attempts last-throwable])
-  (on-success [this retry-name number-of-retry-attempts last-throwable])
-  (on-error [this retry-name number-of-retry-attempts last-throwable])
-  (on-ignored-error [this retry-name number-of-retry-attempts last-throwable]))
+(def ^{:dynamic true
+       :doc     "Contextual value represents retry name"}
+*retry-name*)
 
-(defmulti ^:private relay-event (fn [_ event] (class event)))
+(def ^{:dynamic true
+       :doc "Contextual value represents event create time"}
+*creation-time*)
 
-(defmethod relay-event RetryOnRetryEvent
-  [event-listener ^RetryOnRetryEvent event]
-  (on-retry event-listener
-            (.getName event)
-            (.getNumberOfRetryAttempts event)
-            (.getLastThrowable event)))
+(defmacro ^{:private true :no-doc true} with-context [abstract-event & body]
+  (let [abstract-event (vary-meta abstract-event assoc :tag `RetryEvent)]
+    `(binding [*retry-name* (.getName ~abstract-event)
+               *creation-time* (.getCreationTime ~abstract-event)]
+       ~@body)))
 
-(defmethod relay-event RetryOnSuccessEvent
-  [event-listener ^RetryOnSuccessEvent event]
-  (on-success event-listener
-              (.getName event)
-              (.getNumberOfRetryAttempts event)
-              (.getLastThrowable event)))
+(defn- create-consumer [consumer-fn]
+  (reify EventConsumer
+    (consumeEvent [_ event]
+      (with-context event
+        (consumer-fn (.getNumberOfRetryAttempts ^RetryEvent event)
+                     (.getLastThrowable ^RetryEvent event))))))
 
-(defmethod relay-event RetryOnErrorEvent
-  [event-listener ^RetryOnErrorEvent event]
-  (on-error event-listener
-            (.getName event)
-            (.getNumberOfRetryAttempts event)
-            (.getLastThrowable event)))
+(defn set-on-retry-event-consumer!
+  [^Retry retry consumer-fn]
+  "set a consumer to consume `on-retry` event which emitted when the protected request is failed and retried.
+   `consumer-fn` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments.
 
-(defmethod relay-event RetryOnIgnoredErrorEvent
-  [event-listener ^RetryOnIgnoredErrorEvent event]
-  (on-ignored-error event-listener
-                    (.getName event)
-                    (.getNumberOfRetryAttempts event)
-                    (.getLastThrowable event)))
-
-(defmacro ^:private generate-consumer [event-listener]
-  `(reify EventConsumer
-     (consumeEvent [_ event#]
-       (relay-event ~event-listener event#))))
-
-(defn listen-on-retry [^Retry retry event-listener]
+   Please note that in `consumer-fn` you can get the retry policy name and the creation time of the
+   consumed event by accessing `*retry-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher retry)]
-    (.onRetry pub (generate-consumer event-listener))))
+    (.onRetry pub (create-consumer consumer-fn))))
 
-(defn listen-on-success [^Retry retry event-listener]
-  (let [pub (.getEventPublisher retry)]
-    (.onSuccess pub (generate-consumer event-listener))))
+(defn set-on-success-event-consumer!
+  [^Retry retry consumer-fn]
+  "set a consumer to consume `on-success` event which emitted when the protected request is success.
+   `consumer-fn` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments.
 
-(defn listen-on-error [^Retry retry event-listener]
+   Please note that in `consumer-fn` you can get the retry policy name and the creation time of the
+   consumed event by accessing `*retry-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher retry)]
-    (.onError pub (generate-consumer event-listener))))
+    (.onSuccess pub (create-consumer consumer-fn))))
 
-(defn listen-on-ignored-error [^Retry retry event-listener]
-  (let [pub (.getEventPublisher retry)]
-    (.onIgnoredError pub (generate-consumer event-listener))))
+(defn set-on-error-event-consumer!
+  [^Retry retry consumer-fn]
+  "set a consumer to consume `on-error` event which emitted when the protected request is failed at last.
+   `consumer-fn` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments.
 
-(defn listen-on-all-event [^Retry retry event-listener]
+   Please note that in `consumer-fn` you can get the retry policy name and the creation time of the
+   consumed event by accessing `*retry-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher retry)]
-    (.onEvent pub (generate-consumer event-listener))))
+    (.onError pub (create-consumer consumer-fn))))
+
+(defn set-on-ignored-error-event-consumer!
+  [^Retry retry consumer-fn]
+  "set a consumer to consume `on-ignored-error` event which emitted when the protected request is failed at last
+   due to an error which we determine to ignore.
+   `consumer-fn` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments.
+
+   Please note that in `consumer-fn` you can get the retry policy name and the creation time of the
+   consumed event by accessing `*retry-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher retry)]
+    (.onIgnoredError pub (create-consumer consumer-fn))))
+
+(defn set-on-all-event-consumer!
+  [^Retry retry consumer-fn-map]
+  "set a consumer to consume all available events emitted from the retry.
+   `consumer-fn-map` accepts a map which contains following key and function pairs:
+
+   * `on-retry` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments
+   * `on-success` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments
+   * `on-error` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments
+   * `on-ignored-error` accepts a function which takes `number-of-retry-attemps` and `last-throwable` as arguments
+
+   Please note that in `consumer-fn` you can get the retry policy name and the creation time of the
+   consumed event by accessing `*retry-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher retry)]
+    (.onEvent pub (reify EventConsumer
+                    (consumeEvent [_ event]
+                      (with-context event
+                                    (when-let [consumer-fn (->> (u/case-enum (.getEventType ^RetryEvent event)
+                                                                             RetryEvent$Type/RETRY
+                                                                             :on-retry
+
+                                                                             RetryEvent$Type/SUCCESS
+                                                                             :on-success
+
+                                                                             RetryEvent$Type/ERROR
+                                                                             :on-error
+
+                                                                             RetryEvent$Type/IGNORED_ERROR
+                                                                             :on-ignored-error)
+                                                                (get consumer-fn-map))]
+                                      (consumer-fn))))))))

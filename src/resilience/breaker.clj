@@ -135,7 +135,7 @@
        :doc "Contextual value represents event create time"}
 *creation-time*)
 
-(defmacro ^:no-doc with-context [abstract-event & body]
+(defmacro ^{:private true :no-doc true} with-context [abstract-event & body]
   (let [abstract-event (vary-meta abstract-event assoc :tag `CircuitBreakerEvent)]
     `(binding [*breaker-name* (.getCircuitBreakerName ~abstract-event)
                *creation-time* (.getCreationTime ~abstract-event)]
@@ -195,28 +195,40 @@
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume `on-success` event which emitted when request success from circuit breaker.
    `consumer-fn` accepts a function which takes `elapsed-millis` as arguments,
-   which stands for the duration in milliseconds of the successful request"
+   which stands for the duration in milliseconds of the successful request.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onSuccess pub (create-consumer :on-success consumer-fn))))
 
 (defn set-on-error-event-consumer!
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume `on-error` event which emitted when request failed from circuit breaker.
-   `consumer-fn` accepts a function which takes `throwable`, `elapsed-millis` as arguments"
+   `consumer-fn` accepts a function which takes `throwable`, `elapsed-millis` as arguments.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onError pub (create-consumer :on-error consumer-fn))))
 
 (defn set-on-state-transition-event-consumer!
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume `on-state-transition` event which emitted when the state of the circuit breaker changed
-   `consumer-fn` accepts a function which takes `from-state`, `to-state` as arguments"
+   `consumer-fn` accepts a function which takes `from-state`, `to-state` as arguments.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onStateTransition pub (create-consumer :on-state-transition consumer-fn))))
 
 (defn set-on-reset-event-consumer!
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume `on-reset` event which emitted when the state of the circuit breaker reset to CLOSED
-   `consumer-fn` accepts a function which takes no arguments"
+   `consumer-fn` accepts a function which takes no arguments.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onReset pub (create-consumer :on-reset consumer-fn))))
 
@@ -224,7 +236,10 @@
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume `on-ignored-error` event which emitted when the request failed due to an error
    which we determine to ignore
-   `consumer-fn` accepts a function which takes `throwable`, `elapsed-millis` as arguments"
+   `consumer-fn` accepts a function which takes `throwable`, `elapsed-millis` as arguments.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onIgnoredError pub (create-consumer :on-ignored-error consumer-fn))))
 
@@ -232,7 +247,10 @@
   [^CircuitBreaker breaker consumer-fn]
   "set a consumer to consume on call not permitted event which emitted when a request is
    refused due to circuit breaker open.
-   `consumer-fn` accepts a function which takes no arguments"
+   `consumer-fn` accepts a function which takes no arguments.
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onCallNotPermitted pub (create-consumer :on-call-not-permitted consumer-fn))))
 
@@ -246,7 +264,10 @@
    * `on-state-transition` accepts a function which takes `from-state`, `to-state` as arguments
    * `on-reset` accepts a function which takes no arguments
    * `on-ignored-error` accepts a function which takes `throwable`, `elapsed-millis` as arguments
-   * `on-call-not-permitted` accepts a function which takes no arguments"
+   * `on-call-not-permitted` accepts a function which takes no arguments
+
+   Please note that in `consumer-fn` you can get the circuit breaker name and the creation time of the
+   consumed event by accessing `*breaker-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher breaker)]
     (.onEvent pub (create-consumer consumer-fn-map))))
 

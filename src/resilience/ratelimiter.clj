@@ -5,7 +5,7 @@
   (:import (java.time Duration)
            (io.github.resilience4j.ratelimiter RateLimiterConfig RateLimiterConfig$Builder
                                                RateLimiterRegistry RateLimiter)
-           (io.github.resilience4j.ratelimiter.event RateLimiterOnFailureEvent RateLimiterOnSuccessEvent)
+           (io.github.resilience4j.ratelimiter.event RateLimiterEvent RateLimiterEvent$Type)
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RateLimiterConfig rate-limiter-config [opts]
@@ -103,33 +103,65 @@
     {:number-of-waiting-threads (.getNumberOfWaitingThreads metric)
      :available-permissions (.getAvailablePermissions metric)}))
 
-(defprotocol RateLimiterEventListener
-  (on-success [this rate-limiter-name])
-  (on-failure [this rate-limiter-name]))
+(def ^{:dynamic true
+       :doc     "Contextual value represents rate limiter name"}
+*rate-limiter-name*)
 
-(defmulti ^:private relay-event (fn [_ event] (class event)))
+(def ^{:dynamic true
+       :doc "Contextual value represents event create time"}
+*creation-time*)
 
-(defmethod relay-event RateLimiterOnSuccessEvent
-  [event-listener ^RateLimiterOnSuccessEvent event]
-  (on-success event-listener (.getRateLimiterName event)))
+(defmacro ^{:private true :no-doc true} with-context [abstract-event & body]
+  (let [abstract-event (vary-meta abstract-event assoc :tag `RateLimiterEvent)]
+    `(binding [*rate-limiter-name* (.getRateLimiterName ~abstract-event)
+               *creation-time* (.getCreationTime ~abstract-event)]
+       ~@body)))
 
-(defmethod relay-event RateLimiterOnFailureEvent
-  [event-listener ^RateLimiterOnFailureEvent event]
-  (on-failure event-listener (.getRateLimiterName event)))
+(defn- create-consumer [consumer-fn]
+  (reify EventConsumer
+    (consumeEvent [_ event]
+      (with-context event
+        (consumer-fn)))))
 
-(defmacro ^:private generate-consumer [event-listener]
-  `(reify EventConsumer
-     (consumeEvent [_ event#]
-       (relay-event ~event-listener event#))))
+(defn set-on-failed-acquire-event-consumer!
+  [^RateLimiter rate-limiter consumer-fn]
+  "set a consumer to consume `on-failed-acquire` event which emitted when request is rejected by the rate limiter.
+   `consumer-fn` accepts a function which takes no arguments.
 
-(defn listen-on-success [^RateLimiter limiter event-listener]
-  (let [pub (.getEventPublisher limiter)]
-    (.onSuccess pub (generate-consumer event-listener))))
+   Please note that in `consumer-fn` you can get the rate limiter name and the creation time of the
+   consumed event by accessing `*rate-limiter-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher rate-limiter)]
+    (.onFailure pub (create-consumer consumer-fn))))
 
-(defn listen-on-failure [^RateLimiter limiter event-listener]
-  (let [pub (.getEventPublisher limiter)]
-    (.onFailure pub (generate-consumer event-listener))))
+(defn set-on-successful-acquire-event-consumer!
+  [^RateLimiter rate-limiter consumer-fn]
+  "set a consumer to consume `on-successful-acquire` event which emitted when request is permitted by the rate limiter.
+   `consumer-fn` accepts a function which takes no arguments.
 
-(defn listen-on-all-event [^RateLimiter limiter event-listener]
-  (let [pub (.getEventPublisher limiter)]
-    (.onEvent pub (generate-consumer event-listener))))
+   Please note that in `consumer-fn` you can get the rate limiter name and the creation time of the
+   consumed event by accessing `*rate-limiter-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher rate-limiter)]
+    (.onSuccess pub (create-consumer consumer-fn))))
+
+(defn set-on-all-event-consumer!
+  [^RateLimiter rate-limiter consumer-fn-map]
+  "set a consumer to consume all available events emitted from the rate limiter.
+   `consumer-fn-map` accepts a map which contains following key and function pairs:
+
+   * `on-failed-acquire` accepts a function which takes no arguments
+   * `on-successful-acquire` accepts a function which takes no arguments
+
+   Please note that in `consumer-fn` you can get the rate limiter name and the creation time of the
+   consumed event by accessing `*rate-limiter-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher rate-limiter)]
+    (.onEvent pub (reify EventConsumer
+                    (consumeEvent [_ event]
+                      (with-context event
+                                    (when-let [consumer-fn (->> (u/case-enum (.getEventType ^RateLimiterEvent event)
+                                                                             RateLimiterEvent$Type/FAILED_ACQUIRE
+                                                                             :on-failed-acquire
+
+                                                                             RateLimiterEvent$Type/SUCCESSFUL_ACQUIRE
+                                                                             :on-successful-acquire)
+                                                                (get consumer-fn-map))]
+                                      (consumer-fn))))))))
