@@ -21,7 +21,6 @@
                                                 (Thread/sleep (* 2 (:wait-millis bulkhead-config)))
                                                 (.await done))
               (catch Exception ex
-                (println "unexpected exception" ex)
                 (is false)))))
         (.await latch)
         (let [start (System/nanoTime)]

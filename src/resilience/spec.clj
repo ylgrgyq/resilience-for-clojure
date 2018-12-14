@@ -1,8 +1,7 @@
-(ns ^{:doc "Lots of things copied from https://github.com/sunng87/diehard under this namespace"}
+(ns ^{:doc "Lots of ideas under this namespace copied from https://github.com/sunng87/diehard"}
   resilience.spec
   (:require [clojure.spec.alpha :as s])
-  (:import (java.time Duration)
-           (io.github.resilience4j.retry IntervalFunction)))
+  (:import (io.github.resilience4j.retry IntervalFunction)))
 
 ;; copied from https://github.com/sunng87/diehard and https://groups.google.com/forum/#!topic/clojure/fti0eJdPQJ8
 (defmacro only-keys
