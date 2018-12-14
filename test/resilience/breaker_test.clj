@@ -31,12 +31,12 @@
   (is (thrown? CircuitBreakerOpenException (resilience/execute-with-breaker breaker (fail)))))
 
 (deftest test-breaker
-  (let [breaker-basic-config {:failure-rate-threshold                     50
+  (let [breaker-basic-config {:failure-rate-threshold                     50.0
                               :ring-buffer-size-in-closed-state           30
                               :ring-buffer-size-in-half-open-state        20
                               :wait-millis-in-open-state                  1000
-                              :automatic-transfer-from-open-to-half-open? true}
-        testing-breaker (circuit-breaker "testing-breaker" breaker-basic-config)]
+                              :automatic-transfer-from-open-to-half-open? true}]
+    (defbreaker testing-breaker breaker-basic-config)
     (testing "breaker from CLOSED to OPEN"
       ;; fill the ring buffer for closed state
       (is (= :CLOSED (state testing-breaker)))
@@ -66,5 +66,18 @@
       (doseq [_ (range (:ring-buffer-size-in-half-open-state breaker-basic-config))]
         (resilience/execute-with-breaker testing-breaker (success)))
       (is (= :CLOSED (state testing-breaker)))
-      (reset! testing-breaker))))
+      (reset! testing-breaker))
+
+    (testing "force transition state"
+      (is (= :CLOSED (state testing-breaker)))
+      (transition-to-disabled-state! testing-breaker)
+      (is (= :DISABLED (state testing-breaker)))
+      (transition-to-forced-open-state! testing-breaker)
+      (is (= :FORCED_OPEN (state testing-breaker)))
+      (transition-to-half-open! testing-breaker)
+      (is (= :HALF_OPEN (state testing-breaker)))
+      (transition-to-closed-state! testing-breaker)
+      (is (= :CLOSED (state testing-breaker)))
+      (transition-to-open-state! testing-breaker)
+      (is (= :OPEN (state testing-breaker))))))
 

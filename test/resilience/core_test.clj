@@ -22,7 +22,7 @@
         (execute-with-breaker breaker (execute-fn))))))
 
 (deftest test-execute
-  (let [breaker-basic-config {:failure-rate-threshold                     50
+  (let [breaker-basic-config {:failure-rate-threshold                     50.0
                               :ring-buffer-size-in-closed-state           30
                               :ring-buffer-size-in-half-open-state        20
                               :wait-millis-in-open-state                  1000
@@ -58,14 +58,14 @@
                @retry-times))))))
 
 (deftest test-with-resilience-family
-  (let [breaker-basic-config {:failure-rate-threshold                     50
+  (let [breaker-basic-config {:failure-rate-threshold                     50.0
                               :ring-buffer-size-in-closed-state           30
                               :ring-buffer-size-in-half-open-state        20
                               :wait-millis-in-open-state                  1000
                               :automatic-transfer-from-open-to-half-open? true}
         testing-breaker (breaker/circuit-breaker "testing-breaker" breaker-basic-config)
         bulkhead-config {:max-concurrent-calls 5
-                         :wait-millis          200}
+                         :max-wait-millis      200}
         testing-bulkhead (bulkhead/bulkhead "testing-bulkhead" bulkhead-config)
         retry-config {:max-attempts 5
                       :wait-millis  200}

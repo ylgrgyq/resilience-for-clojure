@@ -1,6 +1,7 @@
 (ns resilience.ratelimiter
   (:refer-clojure :exclude [name])
-  (:require [resilience.util :as u])
+  (:require [resilience.util :as u]
+            [resilience.spec :as s])
   (:import (java.time Duration)
            (io.github.resilience4j.ratelimiter RateLimiterConfig RateLimiterConfig$Builder
                                                RateLimiterRegistry RateLimiter)
@@ -8,6 +9,8 @@
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^RateLimiterConfig rate-limiter-config [opts]
+  (s/verify-opt-map-keys-with-spec :ratelimiter/rate-limiter-config opts)
+
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for rate limiter."))
     (let [^RateLimiterConfig$Builder config (RateLimiterConfig/custom)]
