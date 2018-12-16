@@ -12,7 +12,84 @@
                                                         CircuitBreakerOnStateTransitionEvent
                                                         CircuitBreakerEvent CircuitBreakerEvent$Type)))
 
-(defn ^CircuitBreakerConfig circuit-breaker-config [opts]
+(defn ^CircuitBreakerConfig circuit-breaker-config
+  "Create a CircuitBreakerConfig.
+
+  Allowed options are:
+  * :failure-rate-threshold
+    Configures the failure rate threshold in percentage above
+    which the circuit breaker should trip open and start
+    short-circuiting calls.
+
+  * :wait-millis-in-open-state
+    Configures the wait duration which specifies how long the
+    circuit breaker should stay open, before it switches to half
+    open.
+    Default value is 60 seconds.
+
+  * :ring-buffer-size-in-half-open-state
+    Configures the size of the ring buffer when the circuit breaker
+    is half open. The circuit breaker stores the success/failure
+    status of the latest calls in a ring buffer. For example, if
+    :ring-buffer-size-in-half-open-state is 10, then at least 10 calls
+    must be evaluated, before the failure rate can be calculated. If
+    only 9 calls have been evaluated the CircuitBreaker will not trip
+    back to closed or open even if all 9 calls have failed.
+    The size must be greater than 0. Default size is 10.
+
+  * :ring-buffer-size-in-closed-state
+    Configures the size of the ring buffer when the circuit breaker is
+    closed. The circuit breaker stores the success/failure status of the
+    latest calls in a ring buffer. For example, if
+    :ring-buffer-size-in-closed-state is 100, then at least 100 calls
+    must be evaluated, before the failure rate can be calculated. If
+    only 99 calls have been evaluated the circuit breaker will not trip
+    open even if all 99 calls have failed.
+    The default size is 100.
+
+  * :record-failure
+    Configures a function which take a `throwable` as argument and
+    evaluates if an exception should be recorded as a failure and thus
+    increase the failure rate.
+    The predicate function must return true if the exception should
+    count as a failure, otherwise it must return false.
+
+  * :record-exceptions
+    Configures a list of error classes that are recorded as a failure
+    and thus increase the failure rate. Any exception matching or
+    inheriting from one of the list should count as a failure, unless
+    ignored via :ignore-exceptions. Ignoring an exception has priority
+    over recording an exception.
+    Example:
+    {:record-exceptions [Throwable]
+     :ignore-exceptions [RuntimeException]}
+    would capture all Errors and checked Exceptions, and ignore
+    unchecked exceptions.
+    For a more sophisticated exception management use the
+    :record-failure option.
+
+  * :ignore-exceptions
+    Configures a list of error classes that are ignored as a failure
+     and thus do not increase the failure rate. Any exception matching
+     or inheriting from one of the list will not count as a failure,
+     even if marked via :record-exceptions. Ignoring an exception has
+     priority over recording an exception.
+     Example:
+     {:ignore-exceptions [Throwable]
+      :record-exceptions [Exception]}
+     would capture nothing.
+     Example:
+     {:ignore-exceptions [Exception]
+      :record-exceptions [Throwable]}
+     would capture Errors.
+     For a more sophisticated exception management use the
+     :record-failure option.
+
+  * :automatic-transfer-from-open-to-half-open?
+    Enables automatic transition from :OPEN to :HALF_OPEN state once
+    the :wait-millis-in-open-state has passed.
+   "
+  [opts]
   (s/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
 
   (if (empty? opts)
@@ -42,10 +119,25 @@
 
       (.build config))))
 
-(defn ^CircuitBreakerRegistry registry-with-config [^CircuitBreakerConfig config]
-  (CircuitBreakerRegistry/of config))
+(defn ^CircuitBreakerRegistry registry-with-config
+  "Create a CircuitBreakerRegistry with a configurations map which can
+   be used to create CircuitBreakerConfig.
 
-(defmacro defregistry [name config]
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   within the configuration map."
+  [config]
+  (let [c (if (instance? CircuitBreakerConfig config)
+            config
+            (circuit-breaker-config config))]
+    (CircuitBreakerRegistry/of c)))
+
+(defmacro defregistry
+  "Define a CircuitBreakerRegistry under `name` with a configurations
+   map which can be used to create CircuitBreakerConfig.
+
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   within configuration map."
+  [name config]
   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
     `(def ~sym
        (let [config# (circuit-breaker-config ~config)]
@@ -58,7 +150,38 @@
         iter (.iterator breakers)]
     (u/lazy-seq-from-iterator iter)))
 
-(defn circuit-breaker [^String name config]
+(defn circuit-breaker
+  "Create a circuit breaker with a `name` to register to circuit breaker
+   registry and a configurations map to create CircuitBreakerConfig.
+
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   to create CircuitBreakerConfig.
+
+   If you want to register this circuit breaker to a CircuitBreakerRegistry,
+   you can provide a CircuitBreakerRegistry under :registry key. If you do
+   not provide any other configurations, the newly created circuit breaker
+   will inherit the CircuitBreakerConfig from this provided CircuitBreakerRegistry
+   Example:
+   (circuit-breaker my-breaker {:registry my-registry})
+
+   If you want to register this circuit breaker to a CircuitBreakerRegistry
+   and you want to use a new CircuitBreakerConfig overwriting the
+   CircuitBreakerConfig inherited from the registered CircuitBreakerRegistry,
+   you need not only provide the :registry key with the CircuitBreakerRegistry
+   you want to register to but also provide other circuit breaker configuration.
+   Example:
+   (circuit-breaker my-breaker {:registry my-registry
+                                :failure-rate-threshold 50.0
+                                :ring-buffer-size-in-closed-state 30
+                                :ring-buffer-size-in-half-open-state 20})
+
+   If you only want to create a circuit and not register it to any
+   CircuitBreakerRegistry, you just need to provide the configuration map
+   which can be used to create CircuitBreakerConfig. The `name` argument is ignored.
+
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   within configuration map."
+  [^String name config]
   (let [^CircuitBreakerRegistry registry (:registry config)
         config (dissoc config :registry)]
     (cond
@@ -73,10 +196,39 @@
       (let [config (circuit-breaker-config config)]
         (CircuitBreaker/of name ^CircuitBreakerConfig config)))))
 
-;; name configs
-;; name registry
-;; name registry configs
-(defmacro defbreaker [name config]
+(defmacro defbreaker
+  "Define a circuit breaker under `name` and use the same name to register
+   the newly created circuit breaker to circuit breaker registry.
+
+   The argument `config` is used to create CircuitBreakerConfig which then
+   be used to create circuit breaker. Please refer to `circuit-breaker-config`
+   for allowed key value pairs to create CircuitBreakerConfig.
+
+   If you want to register this circuit breaker to a CircuitBreakerRegistry,
+   you can provide a CircuitBreakerRegistry under :registry key. If you do
+   not provide any other configurations, the newly created circuit breaker
+   will inherit the CircuitBreakerConfig from this provided CircuitBreakerRegistry
+   Example:
+   (circuit-breaker my-breaker {:registry my-registry})
+
+   If you want to register this circuit breaker to a CircuitBreakerRegistry
+   and you want to use a new CircuitBreakerConfig overwriting the
+   CircuitBreakerConfig inherited from the registered CircuitBreakerRegistry,
+   you need not only provide the :registry key with the CircuitBreakerRegistry
+   you want to register to but also provide other circuit breaker configuration.
+   Example:
+   (circuit-breaker my-breaker {:registry my-registry
+                                :failure-rate-threshold 50.0
+                                :ring-buffer-size-in-closed-state 30
+                                :ring-buffer-size-in-half-open-state 20})
+
+   If you only want to create a circuit and not register it to any
+   CircuitBreakerRegistry, you just need to provide the configuration map
+   which can be used to create CircuitBreakerConfig. The `name` argument is ignored.
+
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   within configuration map."
+  [name config]
   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (circuit-breaker ~name-in-string ~config))))
