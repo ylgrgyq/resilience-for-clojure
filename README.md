@@ -167,6 +167,20 @@ We provide another way to handle exceptions which may a little more concise in c
   (resilience/recover-from BulkheadFullException log-bulkhead-full-and-return-a-fallback-value)
   (resilience/recover-from RequestNotPermitted log-request-not-permitted-and-return-a-fallback-value)
   (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
+
+;; or if you wish to handle several exceptions in the same way like what catching multiple exception types in Java did
+;; you can list all exceptions you want to catch in `recover-from` and provide a single handling function
+(resilience/execute
+  (do (do-something)
+      (do-another-thing))
+  (resilience/with-retry my-retry)
+  (resilience/with-breaker my-breaker)
+  (resilience/with-bulkhead my-bulkhead)
+  (resilience/with-rate-limiter my-ratelimiter)
+  (resilience/recover-from [CircuitBreakerOpenException BulkheadFullException RequestNotPermitted]
+                           log-resilience-family-exception-and-return-a-fallback-value)
+  (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
+
 ```
 
 But we did admit that there's not much difference between this two ways. Usually you can just choose any one style of them and stick on it.
