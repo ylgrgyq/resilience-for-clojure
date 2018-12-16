@@ -139,8 +139,7 @@ Please note that the second parameter passed to `with-resilience-family` is a li
 
 What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle these exceptions respectively which force you to add `try` block with many `catch` to protect your codes and react to different exceptions with different behavior. Finally, they will make your codes not as concise as above examples. After adding exceptions handling stuff, the example before may looks like this:
 
-```clojure
-(try
+```clojure (try
   (resilience/with-resilience-family
     [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
     (do-something)
@@ -170,10 +169,9 @@ We provide another way to handle exceptions which may a little more concise in c
   (resilience/recover-from RequestNotPermitted log-request-not-permitted-and-return-a-fallback-value)
   (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
 
-;; or if you wish to handle several exceptions in the same way like what catching 
-;; multiple exception types in Java did
-;; you can list all exceptions you want to catch in `recover-from` and provide a 
-;; single handling function
+;; or if you wish to handle several exceptions in the same way like what catching multiple 
+;; exception types in Java did, you can list all exceptions you want to catch in `recover-from` 
+;; and provide a single handling function
 (resilience/execute
   (do (do-something)
       (do-another-thing))
