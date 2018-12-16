@@ -1,5 +1,7 @@
 # Resilience for Clojure
 
+[![Build Status](https://travis-ci.com/ylgrgyq/resilience-for-clojure.svg?branch=master)](https://travis-ci.com/ylgrgyq/resilience-for-clojure)
+
 A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard). Many thanks to both of them.
 
 ## Usage Examples
@@ -216,46 +218,27 @@ Still take `CircuitBreaker` as an example.
    :ring-buffer-size-in-closed-state 30
    :wait-millis-in-open-state 1000})
 
-;; then you can add listener to the circuit breaker
-;; listen on success event
-(breaker/listen-on-success my-breaker
-  (reify CircuitBreakerEventListener
-    (on-success [this name elapsed-millis]
-      (log/info ...))))
+;; set consumer for on-success event
+(set-on-success-event-consumer! testing-breaker (fn [elapsed-millis] (log/info ...)))
 
-;; listen on error event
-(breaker/listen-on-error my-breaker
-  (reify CircuitBreakerEventListener
-    (on-error [this breaker-name throwable elapsed-millis]
-      (log/info ...))))
+;; set consumer for on-error-event
+(set-on-error-event-consumer! testing-breaker (fn [throwable elapsed-millis] (log/info ...)))
 
-;; listen on state transition event
-(breaker/listen-on-state-transition my-breaker
-  (reify CircuitBreakerEventListener
-    (on-state-transition [this breaker-name from-state to-state]
-      (log/info ...))))
+;; set consumer for on-state-transition-event
+(set-on-state-transition-event-consumer! testing-breaker (fn [from-state to-state] (log/info ...)))
 
-;; I'm not going to list all the available events you can listen on
-;; please check the doc or the codes to get more details
+;; I'm not going to list all the available events you can consume to
+;; please refer to the doc or the codes to get more details
 ...
 
-;; and you can also create a big listener to catch all these events
-(let [listener (reify CircuitBreakerEventListener
-                 (on-success [this breaker-name elapsed-millis]
-                   (log/info ...))
-                 (on-error [this breaker-name throwable elapsed-millis]
-                   (log/info ...))
-                 (on-state-transition [this breaker-name from-state to-state]
-                   (log/info ...))
-                 ...)]
-  ;; you can listen on events separately
-  (breaker/listen-on-success my-breaker listener)
-  (breaker/listen-on-error my-breaker listener)
-  (breaker/listen-on-state-transition my-breaker listener)
-  ...
-
-  ;; or listen all these events on one call
-  (breaker/listen-on-all-events my-breaker listener))
+;; and you can set all consumer functions for events in one call
+(let [consumer-fn-map {:on-success          (fn [elapsed-millis]
+                                              (log/info ...))
+                       :on-error            (fn [throwable elapsed-millis]
+                                              (log/info ...))
+                       :on-state-transition (fn [from-state to-state]
+                                              (log/info ...))}]
+  (set-on-all-event-consumer! my-breaker consumer-fn-map))
 ```
 
 # License
