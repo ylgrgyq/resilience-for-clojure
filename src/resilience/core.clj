@@ -21,8 +21,10 @@
 
 ;; retry
 
-(defmacro execute-with-retry [^Retry retry & body]
-  `(.executeCallable ~retry ^Callable (fn [] (do ~@body))))
+(defmacro execute-with-retry [retry & body]
+  (let [retry (vary-meta retry assoc :tag `Retry)
+        f (with-meta `(to-fn ~@body) {:tag `Callable})]
+    `(.executeCallable ~retry ~f)))
 
 (defn with-retry [^Retry r f]
   (Retry/decorateCallable r f))
@@ -30,15 +32,21 @@
 ;; bulkhead
 
 (defmacro execute-with-bulkhead [^Bulkhead bulkhead & body]
-  `(.executeCallable ~bulkhead ^Callable (fn [] (do ~@body))))
+  (let [bulkhead (vary-meta bulkhead assoc :tag `Bulkhead)
+        f (with-meta `(to-fn ~@body) {:tag `Callable})]
+    `(.executeCallable ~bulkhead ~f)))
 
-(defn with-bulkhead [^Bulkhead r f]
-  (Bulkhead/decorateCallable r f))
+(defn with-bulkhead [^Bulkhead h f]
+  (Bulkhead/decorateCallable h f))
 
 ;; rate limiter
 
-(defmacro execute-with-rate-limiter [^RateLimiter ratelimiter & body]
-  `(.executeCallable ~ratelimiter ^Callable (fn [] (do ~@body))))
+(defmacro execute-with-rate-limiter
+  [ratelimiter & body]
+  "Please take care that you can not put `(recur)` in `body` otherwise you'll got an infinite loop."
+  (let [ratelimiter (vary-meta ratelimiter assoc :tag `RateLimiter)
+        f (with-meta `(to-fn ~@body) {:tag `Callable})]
+    `(.executeCallable ~ratelimiter ~f)))
 
 (defn with-rate-limiter [^RateLimiter r f]
   (RateLimiter/decorateCallable r f))
@@ -46,11 +54,12 @@
 ;; time limiter
 
 (defmacro execute-with-time-limiter [^TimeLimiter timelimiter & body]
-  `(.executeFutureSupplier ~timelimiter (reify Supplier
-                                          (get [_] (do ~@body)))))
+  (let [timelimiter (vary-meta timelimiter assoc :tag `TimeLimiter)]
+    `(.executeFutureSupplier ~timelimiter (reify Supplier
+                                            (get [_] (do ~@body))))))
 
-(defn with-time-limiter [^TimeLimiter r f]
-  (TimeLimiter/decorateFutureSupplier r
+(defn with-time-limiter [^TimeLimiter t f]
+  (TimeLimiter/decorateFutureSupplier t
                                       (reify Supplier
                                         (get [_] (f)))))
 

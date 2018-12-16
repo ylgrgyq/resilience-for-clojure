@@ -3,8 +3,7 @@
   (:require [resilience.util :as u]
             [resilience.spec :as s])
   (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead)
-           (io.github.resilience4j.bulkhead.event BulkheadOnCallRejectedEvent BulkheadOnCallFinishedEvent
-                                                  BulkheadOnCallPermittedEvent)
+           (io.github.resilience4j.bulkhead.event BulkheadEvent BulkheadEvent$Type)
            (io.github.resilience4j.core EventConsumer)))
 
 (defn ^BulkheadConfig bulkhead-config [opts]
@@ -74,42 +73,79 @@
   (let [metric (.getMetrics breaker)]
     {:available-concurrent-calls (.getAvailableConcurrentCalls metric)}))
 
-(defprotocol BulkheadEventListener
-  (on-call-rejected [this bulkhead-name])
-  (on-call-permitted [this bulkhead-name])
-  (on-call-finished [this bulkhead-name]))
+(def ^{:dynamic true
+       :doc     "Contextual value represents bulkhead name"}
+*bulkhead-name*)
 
-(defmulti ^:private relay-event (fn [_ event] (class event)))
+(def ^{:dynamic true
+       :doc "Contextual value represents event create time"}
+*creation-time*)
 
-(defmethod relay-event BulkheadOnCallRejectedEvent
-  [event-listener ^BulkheadOnCallRejectedEvent event]
-  (on-call-rejected event-listener (.getBulkheadName event)))
+(defmacro ^{:private true :no-doc true} with-context [abstract-event & body]
+  (let [abstract-event (vary-meta abstract-event assoc :tag `BulkheadEvent)]
+    `(binding [*bulkhead-name* (.getBulkheadName ~abstract-event)
+               *creation-time* (.getCreationTime ~abstract-event)]
+       ~@body)))
 
-(defmethod relay-event BulkheadOnCallPermittedEvent
-  [event-listener ^BulkheadOnCallPermittedEvent event]
-  (on-call-permitted event-listener (.getBulkheadName event)))
+(defn- create-consumer [consumer-fn]
+  (reify EventConsumer
+    (consumeEvent [_ event]
+      (with-context event
+        (consumer-fn)))))
 
-(defmethod relay-event BulkheadOnCallFinishedEvent
-  [event-listener ^BulkheadOnCallFinishedEvent event]
-  (on-call-finished event-listener (.getBulkheadName event)))
+(defn set-on-call-rejected-event-consumer!
+  [^Bulkhead bulkhead consumer-fn]
+  "set a consumer to consume `on-call-rejected` event which emitted when request rejected by bulkhead.
+   `consumer-fn` accepts a function which takes no arguments.
 
-(defmacro ^:private generate-consumer [event-listener]
-  `(reify EventConsumer
-     (consumeEvent [_ event#]
-       (relay-event ~event-listener event#))))
-
-(defn listen-on-call-rejected [^Bulkhead bulkhead event-listener]
+   Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
+   consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher bulkhead)]
-    (.onCallRejected pub (generate-consumer event-listener))))
+    (.onCallRejected pub (create-consumer consumer-fn))))
 
-(defn listen-on-call-permitted [^Bulkhead bulkhead event-listener]
-  (let [pub (.getEventPublisher bulkhead)]
-    (.onCallPermitted pub (generate-consumer event-listener))))
+(defn set-on-call-permitted-event-consumer!
+  "set a consumer to consume `on-call-permitted` event which emitted when request permitted by bulkhead.
+   `consumer-fn` accepts a function which takes no arguments.
 
-(defn listen-on-call-finished [^Bulkhead bulkhead event-listener]
+   Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
+   consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
+  [^Bulkhead bulkhead consumer-fn]
   (let [pub (.getEventPublisher bulkhead)]
-    (.onCallFinished pub (generate-consumer event-listener))))
+    (.onCallPermitted pub (create-consumer consumer-fn))))
 
-(defn listen-on-all-event [^Bulkhead bulkhead event-listener]
+(defn set-on-call-finished-event-consumer!
+  [^Bulkhead bulkhead consumer-fn]
+  "set a consumer to consume `on-call-finished` event which emitted when a request finished and leave this bulkhead.
+   `consumer-fn` accepts a function which takes no arguments.
+
+   Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
+   consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
   (let [pub (.getEventPublisher bulkhead)]
-    (.onEvent pub (generate-consumer event-listener))))
+    (.onCallFinished pub (create-consumer consumer-fn))))
+
+(defn set-on-all-event-consumer!
+  [^Bulkhead bulkhead consumer-fn-map]
+  "set a consumer to consume all available events emitted from the bulkhead.
+   `consumer-fn-map` accepts a map which contains following key and function pairs:
+
+   * `on-call-rejected` accepts a function which takes no arguments
+   * `on-call-permitted` accepts a function which takes no arguments
+   * `on-call-finished` accepts a function which takes no arguments
+
+   Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
+   consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
+  (let [pub (.getEventPublisher bulkhead)]
+    (.onEvent pub (reify EventConsumer
+                    (consumeEvent [_ event]
+                      (with-context event
+                        (when-let [consumer-fn (->> (u/case-enum (.getEventType ^BulkheadEvent event)
+                                                                 BulkheadEvent$Type/CALL_REJECTED
+                                                                 :on-call-rejected
+
+                                                                 BulkheadEvent$Type/CALL_PERMITTED
+                                                                 :on-call-permitted
+
+                                                                 BulkheadEvent$Type/CALL_FINISHED
+                                                                 :on-call-finished)
+                                                    (get consumer-fn-map))]
+                          (consumer-fn))))))))
