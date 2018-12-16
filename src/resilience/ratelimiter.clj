@@ -34,7 +34,9 @@
        (let [config# (rate-limiter-config ~config)]
          (registry-with-config config#)))))
 
-(defn get-all-rate-limiters [^RateLimiterRegistry registry]
+(defn get-all-rate-limiters
+  "Get all rate limiters registered to this rate limiter registry instance"
+  [^RateLimiterRegistry registry]
   (let [heads (.getAllRateLimiters registry)
         iter (.iterator heads)]
     (u/lazy-seq-from-iterator iter)))

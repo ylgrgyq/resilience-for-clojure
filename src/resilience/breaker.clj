@@ -51,7 +51,9 @@
        (let [config# (circuit-breaker-config ~config)]
          (registry-with-config config#)))))
 
-(defn get-all-breakers [^CircuitBreakerRegistry registry]
+(defn get-all-breakers
+  "Get all circuit breakers registered to this circuit breaker registry instance"
+  [^CircuitBreakerRegistry registry]
   (let [breakers (.getAllCircuitBreakers registry)
         iter (.iterator breakers)]
     (u/lazy-seq-from-iterator iter)))
@@ -101,19 +103,52 @@
   [^CircuitBreaker breaker]
   (.reset breaker))
 
-(defn transition-to-closed-state! [^CircuitBreaker breaker]
+(defn transition-to-closed-state!
+  "Transitions the circuit breaker state machine to CLOSED state.
+
+   Should only be used, when you want to force a state transition.
+   State transition are normally done internally.
+  "
+  [^CircuitBreaker breaker]
   (.transitionToClosedState breaker))
 
-(defn transition-to-open-state! [^CircuitBreaker breaker]
+(defn transition-to-open-state!
+  "Transitions the circuit breaker state machine to OPEN state.
+
+   Should only be used, when you want to force a state transition.
+   State transition are normally done internally."
+  [^CircuitBreaker breaker]
   (.transitionToOpenState breaker))
 
-(defn transition-to-half-open! [^CircuitBreaker breaker]
+(defn transition-to-half-open!
+  "Transitions the circuit breaker state machine to HALF_OPEN state.
+
+   Should only be used, when you want to force a state transition.
+   State transition are normally done internally.
+  "
+  [^CircuitBreaker breaker]
   (.transitionToHalfOpenState breaker))
 
-(defn transition-to-disabled-state! [^CircuitBreaker breaker]
+(defn transition-to-disabled-state!
+  "Transitions the circut breaker state machine to a DISABLED state,
+   stopping state transition, metrics and event publishing.
+
+   Should only be used, when you want to disable the circuit breaker
+   allowing all calls to pass. To recover from this state you must
+   force a new state transition
+  "
+  [^CircuitBreaker breaker]
   (.transitionToDisabledState breaker))
 
-(defn transition-to-forced-open-state! [^CircuitBreaker breaker]
+(defn transition-to-forced-open-state!
+  "Transitions the state machine to a FORCED_OPEN state,
+   stopping state transition, metrics and event publishing.
+
+   Should only be used, when you want to disable the circuit breaker
+   allowing no call to pass. To recover from this state you must
+   force a new state transition.
+  "
+  [^CircuitBreaker breaker]
   (.transitionToForcedOpenState breaker))
 
 (defn metrics

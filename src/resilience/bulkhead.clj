@@ -29,7 +29,9 @@
        (let [config# (bulkhead-config ~config)]
          (registry-with-config config#)))))
 
-(defn get-all-bulkheads [^BulkheadRegistry registry]
+(defn get-all-bulkheads
+  "Get all bulkhead registered to this bulkhead registry instance"
+  [^BulkheadRegistry registry]
   (let [heads (.getAllBulkheads registry)
         iter (.iterator heads)]
     (u/lazy-seq-from-iterator iter)))
