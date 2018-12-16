@@ -84,13 +84,22 @@
           ~@wrappers
           execute-callable*)))
 
-(defn- recover-from* [exception failover-fn wraped-fn]
-  (let [wraped-fn (vary-meta wraped-fn assoc :tag `Callable)]
-    `(fn []
-       (try
-         (.call ~wraped-fn)
-         (catch ~exception ex#
-           (~failover-fn ex#))))))
+(defn- recover-from* [exceptions failover-fn wraped-fn]
+  (let [wraped-fn (vary-meta wraped-fn assoc :tag `Callable)
+        handler (gensym "handler-fn-")
+        catch-blocks (if (sequential? exceptions)
+                       (let [ex-name-list (repeatedly (count exceptions)
+                                                      (partial gensym "ex-"))]
+                         (mapv #(list 'catch % %2
+                                      (list handler %2))
+                               exceptions ex-name-list))
+                       `((catch ~exceptions ex#
+                           (~handler ex#))))]
+    `(let [~handler ~failover-fn]
+       (fn []
+         (try
+           (.call ~wraped-fn)
+           ~@catch-blocks)))))
 
 (defmacro recover-from [exception failover-fn wraped-fn]
   (recover-from* exception failover-fn wraped-fn))

@@ -27,11 +27,11 @@
                               :ring-buffer-size-in-half-open-state        20
                               :wait-millis-in-open-state                  1000
                               :automatic-transfer-from-open-to-half-open? true}
-        testing-breaker (breaker/circuit-breaker "testing-breaker" breaker-basic-config)
-        retry-config {:max-attempts 5
-                      :wait-millis  200}
-        testing-retry (retry/retry "testing-retry" retry-config)]
+        retry-config {:max-attempts 3
+                      :wait-millis  100}]
     (testing "retry with breaker"
+      (retry/defretry testing-retry retry-config)
+      (breaker/defbreaker testing-breaker breaker-basic-config)
       (let [retry-times (volatile! 0)
             max-failed-allowed (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
                                                  (:failure-rate-threshold breaker-basic-config))
@@ -55,6 +55,34 @@
 
         (is (= (* (:max-attempts retry-config)
                   max-failed-allowed)
+               @retry-times))))
+    (testing "multi catch"
+      (retry/defretry testing-retry retry-config)
+      (breaker/defbreaker testing-breaker breaker-basic-config)
+      (let [retry-times (volatile! 0)
+            max-failed-allowed (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
+                                                 (:failure-rate-threshold breaker-basic-config))
+            testing-fn (fn []
+                         (execute
+                           (do (vswap! retry-times inc) (fail))
+                           (with-retry testing-retry)
+                           (with-breaker testing-breaker)
+                           (recover-from [CircuitBreakerOpenException ExceptionInfo]
+                                         (fn [ex]
+                                           (cond
+                                             (instance? ExceptionInfo ex)
+                                             :expected-exception
+
+                                             (instance? CircuitBreakerOpenException ex)
+                                             :breaker-open)))))]
+        (breaker/reset! testing-breaker)
+        (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
+        (doseq [_ (range max-failed-allowed)]
+          (is (= (testing-fn) :expected-exception)))
+        (is (= (testing-fn) :breaker-open))
+
+        (is (= (* (:max-attempts retry-config)
+                  max-failed-allowed)
                @retry-times))))))
 
 (deftest test-with-resilience-family
@@ -64,8 +92,8 @@
                               :wait-millis-in-open-state                  1000
                               :automatic-transfer-from-open-to-half-open? true}
         testing-breaker (breaker/circuit-breaker "testing-breaker" breaker-basic-config)
-        bulkhead-config {:max-concurrent-calls 5
-                         :max-wait-millis      200}
+        bulkhead-config {:max-concurrent-calls 3
+                         :max-wait-millis      100}
         testing-bulkhead (bulkhead/bulkhead "testing-bulkhead" bulkhead-config)
         retry-config {:max-attempts 5
                       :wait-millis  200}
