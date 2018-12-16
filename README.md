@@ -135,7 +135,7 @@ Please note that the second parameter passed to `with-resilience-family` is a li
 
 ### Exception Handling
 
-What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle all these exceptions respectively which may force you to add `try ... catch` blocks to protect your codes then make your codes not as concise as above examples. After adding exception handling stuff, the example before looks like this:
+What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle these exceptions respectively which force you to add `try` block with many `catch` to protect your codes and react to different exceptions with different behavior. Finally, they will make your codes not as concise as above examples. After adding exceptions handling stuff, the example before may looks like this:
 
 ```clojure
 (try
@@ -153,7 +153,7 @@ What we missing until now is how to handle exceptions thrown by resilience famil
     (log-unexpected-exception-and-return-a-fallback-value ex)))
 ```
 
-If you don't like to use `try ... catch` block, you can choose to use `execute` with `recover` form like this:
+We provide another way to handle exceptions which may a little more concise in certain circumstances. Using `execute` with `recover` form like this:
 
 ```clojure
 (resilience/execute
@@ -169,7 +169,7 @@ If you don't like to use `try ... catch` block, you can choose to use `execute` 
   (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
 ```
 
-There's not much difference between them. Usually you can just choose any one style of them and stick on it.
+But we did admit that there's not much difference between this two ways. Usually you can just choose any one style of them and stick on it.
 
 ### Registry
 
@@ -227,7 +227,7 @@ Still take `CircuitBreaker` as an example.
 ;; set consumer for on-state-transition-event
 (set-on-state-transition-event-consumer! testing-breaker (fn [from-state to-state] (log/info ...)))
 
-;; I'm not going to list all the available events you can consume to
+;; omit other available events you can consume to
 ;; please refer to the doc or the codes to get more details
 ...
 
@@ -237,7 +237,8 @@ Still take `CircuitBreaker` as an example.
                        :on-error            (fn [throwable elapsed-millis]
                                               (log/info ...))
                        :on-state-transition (fn [from-state to-state]
-                                              (log/info ...))}]
+                                              (log/info ...))
+                       ...}]
   (set-on-all-event-consumer! my-breaker consumer-fn-map))
 ```
 
