@@ -1,6 +1,7 @@
 # Resilience for Clojure
 
 [![Build Status](https://travis-ci.com/ylgrgyq/resilience-for-clojure.svg?branch=master)](https://travis-ci.com/ylgrgyq/resilience-for-clojure)
+[![Clojars Project](https://img.shields.io/clojars/v/resilience-for-clojure.svg)](https://clojars.org/resilience-for-clojure)
 
 A Clojure wrapper over the great library [_Resilience4j_](https://github.com/resilience4j/resilience4j) to provide fault tolerance to your service. Picked a lot of ideas from another great library [_diehard_](https://github.com/sunng87/diehard). Many thanks to both of them.
 
