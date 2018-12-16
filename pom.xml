@@ -3,21 +3,21 @@
   <groupId>resilience-for-clojure</groupId>
   <artifactId>resilience-for-clojure</artifactId>
   <packaging>jar</packaging>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <name>resilience-for-clojure</name>
   <description>A clojure wrapper over Resilience4j</description>
   <url>https://github.com/ylgrgyq/resilience-for-clojure</url>
   <licenses>
     <license>
-      <name>Eclipse Public License</name>
-      <url>http://www.eclipse.org/legal/epl-v10.html</url>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
     </license>
   </licenses>
   <scm>
     <url>https://github.com/ylgrgyq/resilience-for-clojure</url>
     <connection>scm:git:git://github.com/ylgrgyq/resilience-for-clojure.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/ylgrgyq/resilience-for-clojure.git</developerConnection>
-    <tag>5bd1a3be2c3c8fb44ac01c71c47781ba75bc7c53</tag>
+    <tag>865123f381077940df31b83e4e39ef4bd190b9c4</tag>
   </scm>
   <build>
     <sourceDirectory>src</sourceDirectory>
