@@ -182,10 +182,7 @@
 
    If you only want to create a circuit breaker and not register it to any
    CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
-   argument. The `name` argument is ignored.
-
-   Please refer to `circuit-breaker-config` for allowed key value pairs
-   within the circuit breaker configuration map."
+   argument. The `name` argument is ignored."
   [^String name config]
   (let [^CircuitBreakerRegistry registry (:registry config)
         config (dissoc config :registry)]
@@ -229,10 +226,7 @@
 
    If you only want to create a circuit breaker and not register it to any
    CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
-   argument.
-
-   Please refer to `circuit-breaker-config` for allowed key value pairs
-   within the circuit breaker configuration map."
+   argument."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
         ^String name-in-string (str *ns* "/" name)]

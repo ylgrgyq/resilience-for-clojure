@@ -144,10 +144,7 @@
 
    If you only want to create a retry and not register it to any
    RetryRegistry, you just need to provide retry configurations in `config`
-   argument. The `name` argument is ignored.
-
-   Please refer to `retry-config` for allowed key value pairs
-   within the retry configuration map."
+   argument. The `name` argument is ignored."
   [^String name config]
   (let [^RetryRegistry registry (:registry config)
         config (dissoc config :registry)]
@@ -190,10 +187,7 @@
 
    If you only want to create a retry and not register it to any
    RetryRegistry, you just need to provide retry configurations in `config`
-   argument.
-
-   Please refer to `retry-config` for allowed key value pairs
-   within the retry configuration map."
+   argument."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `Retry})
         ^String name-in-string (str *ns* "/" name)]

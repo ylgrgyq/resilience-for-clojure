@@ -96,10 +96,7 @@
 
    If you only want to create a bulkhead and not register it to any
    BulkheadRegistry, you just need to provide bulkhead configurations in `config`
-   argument. The `name` argument is ignored.
-
-   Please refer to `bulkhead-config` for allowed key value pairs
-   within the bulkhead configuration map."
+   argument. The `name` argument is ignored."
   [^String name config]
   (let [^BulkheadRegistry registry (:registry config)
         config (dissoc config :registry)]
@@ -141,10 +138,7 @@
 
    If you only want to create a bulkhead and not register it to any
    BulkheadRegistry, you just need to provide bulkhead configurations in `config`
-   argument.
-
-   Please refer to `bulkhead-config` for allowed key value pairs
-   within the bulkhead configuration map."
+   argument."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
         ^String name-in-string (str *ns* "/" name)]

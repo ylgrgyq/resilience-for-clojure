@@ -102,10 +102,7 @@
 
    If you only want to create a rate limiter and not register it to any
    RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
-   argument. The `name` argument is ignored.
-
-   Please refer to `rate-limiter-config` for allowed key value pairs
-   within the rate limiter configuration map."
+   argument. The `name` argument is ignored."
   [^String name config]
   (let [^RateLimiterRegistry registry (:registry config)
         config (dissoc config :registry)]
@@ -147,10 +144,7 @@
 
    If you only want to create a rate limiter and not register it to any
    RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
-   argument.
-
-   Please refer to `rate-limiter-config` for allowed key value pairs
-   within the rate limiter configuration map."
+   argument."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `RateLimiter})
         ^String name-in-string (str *ns* "/" name)]
