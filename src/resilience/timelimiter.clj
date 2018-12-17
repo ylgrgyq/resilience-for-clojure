@@ -18,7 +18,8 @@
 
       (.build config))))
 
-(defn time-limiter [config]
+(defn ^TimeLimiter time-limiter
+  [config]
   (let [config (time-limiter-config config)]
     (TimeLimiter/of ^TimeLimiterConfig config)))
 

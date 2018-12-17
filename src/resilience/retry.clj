@@ -8,7 +8,57 @@
            (io.github.resilience4j.retry.event RetryEvent RetryEvent$Type)
            (io.github.resilience4j.core EventConsumer)))
 
-(defn ^RetryConfig retry-config [opts]
+(defn ^RetryConfig retry-config
+  "Create a RetryConfig.
+
+  Allowed options are:
+  * :max-attempts
+    Configures max retry times.
+    Default value is 3.
+
+  * :wait-millis
+    Configures the wait interval time in milliseconds. Between every retry must wait this
+    much time then retry next time.
+    Must be greater than 10. Default value is 500.
+
+  * :retry-on-result
+    Configures a function which evaluates if an result should be retried.
+    The function must return true if the result should be retried, otherwise it must return false.
+
+  * :interval-function
+    Set a function to modify the waiting interval after a failure.
+    By default the interval stays the same.
+
+  * :retry-on-exception
+    Configures a function which takes a throwable as argument and evaluates if an exception
+    should be retried.
+    The function must return true if the exception should count be retried, otherwise it must return false.
+
+    :retry-exceptions
+    Configures a list of error classes that are recorded as a failure and thus increase
+    the failure rate. Any exception matching or inheriting from one of the list will be retried,
+    unless ignored via :ignore-exceptions. Ignoring an exception has priority over retrying an exception.
+    Example:
+    {:retry-exceptions [Throwable]
+     :ignore-exceptions [RuntimeException]}
+    would retry all Errors and checked Exceptions, and ignore unchecked.
+    For a more sophisticated exception management use the :retry-on-exception configuration.
+
+    :ignore-exceptions
+    Configures a list of error classes that are ignored and thus are not retried.
+    Any exception matching or inheriting from one of the list will not be retried, even if marked via :retry-exceptions.
+    Ignoring an exception has priority over retrying an exception.
+    Example:
+    {:ignore-exceptions [Throwable]
+     :retry-exceptions [Exception]}
+    would capture nothing.
+    Example:
+    {:ignore-exceptions [Exception]
+     :retry-exceptions [Throwable]}
+    would capture Errors.
+    For a more sophisticated exception management use the :retry-on-exception function
+   "
+  [opts]
   (s/verify-opt-map-keys-with-spec :retry/retry-config opts)
   (if (empty? opts)
     (throw (IllegalArgumentException. "please provide not empty configuration for retry."))
@@ -35,21 +85,70 @@
         (.ignoreExceptions config (into-array Class exceptions)))
       (.build config))))
 
-(defn ^RetryConfig registry-with-config [^RetryConfig config]
-  (RetryRegistry/of config))
+(defn ^RetryConfig registry-with-config
+  "Create a RetryRegistry with a retry configurations map.
 
-(defmacro defregistry [name configs]
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configuration map."
+  [^RetryConfig config]
+  (let [c (if (instance? RetryConfig config)
+            config
+            (retry-config config))]
+    (RetryRegistry/of c)))
+
+(defmacro defregistry
+  "Define a RetryRegistry under `name` with a retry configurations map.
+
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configuration map."
+  [name configs]
   (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
     `(def ~sym
        (let [configs# (retry-config ~configs)]
          (registry-with-config configs#)))))
 
-(defn get-all-retries [^RetryRegistry registry]
+(defn get-all-retries
+  "Get all retries registered to this retry registry instance"
+  [^RetryRegistry registry]
   (let [breakers (.getAllRetries registry)
         iter (.iterator breakers)]
     (u/lazy-seq-from-iterator iter)))
 
-(defn retry [^String name config]
+(defn ^Retry retry
+  "Create a retry with a `name` and a retry configurations map.
+
+   The `name` argument is only used to register this newly created retry
+   to a RetryRegistry. If you don't want to bind this retry with
+   a RetryRegistry, the `name` argument is ignored.
+
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configurations map.
+
+   If you want to register this retry to a RetryRegistry,
+   you need to put :registry key with a RetryRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   retry will inherit retry configurations from this
+   provided RetryRegistry
+   Example:
+   (retry my-retry {:registry my-registry})
+
+   If you want to register this retry to a RetryRegistry
+   and you want to use new retry configurations to overwrite the configurations
+   inherited from the registered RetryRegistry,
+   you need not only provide the :registry key with the RetryRegistry in `config`
+   argument but also provide other retry configurations you'd like to overwrite.
+   Example:
+   (retry my-retry {:registry my-registry
+                    :max-attempts 5
+                    :wait-millis 5000})
+
+   If you only want to create a retry and not register it to any
+   RetryRegistry, you just need to provide retry configurations in `config`
+   argument. The `name` argument is ignored.
+
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configuration map."
+  [^String name config]
   (let [^RetryRegistry registry (:registry config)
         config (dissoc config :registry)]
     (cond
@@ -64,20 +163,50 @@
       (let [breaker-config (retry-config config)]
         (Retry/of name ^RetryConfig breaker-config)))))
 
-;; name configs
-;; name registry
-;; name registry configs
-(defmacro defretry [name config]
+(defmacro defretry
+  "Define a retry under `name` and use the same name to register
+   the newly created retry to retry registry.
+
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configurations map.
+
+   If you want to register this retry to a RetryRegistry,
+   you need to put :registry key with a RetryRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   retry will inherit retry configurations from this
+   provided RetryRegistry
+   Example:
+   (defretry my-retry {:registry my-registry})
+
+   If you want to register this retry to a RetryRegistry
+   and you want to use new retry configurations to overwrite the configurations
+   inherited from the registered RetryRegistry,
+   you need not only provide the :registry key with the RetryRegistry in `config`
+   argument but also provide other retry configurations you'd like to overwrite.
+   Example:
+   (defretry my-retry {:registry my-registry
+                       :max-attempts 5
+                       :wait-millis 5000})
+
+   If you only want to create a retry and not register it to any
+   RetryRegistry, you just need to provide retry configurations in `config`
+   argument.
+
+   Please refer to `retry-config` for allowed key value pairs
+   within the retry configuration map."
+  [name config]
   (let [sym (with-meta (symbol name) {:tag `Retry})
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (retry ~name-in-string ~config))))
 
-(defn name
+(defn ^String name
   "Get the name of this Retry."
   [^Retry retry]
   (.getName retry))
 
-(defn config [^Retry retry]
+(defn ^RetryConfig config
+  "Get the RetryConfig of this Retry"
+  [^Retry retry]
   (.getRetryConfig retry))
 
 (defn metrics

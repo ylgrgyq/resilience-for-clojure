@@ -17,9 +17,10 @@
 
   Allowed options are:
   * :failure-rate-threshold
-    Configures the failure rate threshold in percentage above
-    which the circuit breaker should trip open and start
+    Configures the failure rate threshold in
+    percentage above which the circuit breaker should trip open and start
     short-circuiting calls.
+    Must be a float/double. Default value is 50%.
 
   * :wait-millis-in-open-state
     Configures the wait duration which specifies how long the
@@ -120,11 +121,11 @@
       (.build config))))
 
 (defn ^CircuitBreakerRegistry registry-with-config
-  "Create a CircuitBreakerRegistry with a configurations map which can
-   be used to create CircuitBreakerConfig.
+  "Create a CircuitBreakerRegistry with a circuit breaker
+   configurations map.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within the configuration map."
+   within the circuit breaker configuration map."
   [config]
   (let [c (if (instance? CircuitBreakerConfig config)
             config
@@ -132,11 +133,11 @@
     (CircuitBreakerRegistry/of c)))
 
 (defmacro defregistry
-  "Define a CircuitBreakerRegistry under `name` with a configurations
-   map which can be used to create CircuitBreakerConfig.
+  "Define a CircuitBreakerRegistry under `name` with a circuit breaker
+   configurations map.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within configuration map."
+   within the circuit breaker configuration map."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
     `(def ~sym
@@ -144,43 +145,47 @@
          (registry-with-config config#)))))
 
 (defn get-all-breakers
-  "Get all circuit breakers registered to this circuit breaker registry instance"
+  "Get all circuit breakers registered to a CircuitBreakerRegistry"
   [^CircuitBreakerRegistry registry]
   (let [breakers (.getAllCircuitBreakers registry)
         iter (.iterator breakers)]
     (u/lazy-seq-from-iterator iter)))
 
-(defn circuit-breaker
-  "Create a circuit breaker with a `name` to register to circuit breaker
-   registry and a configurations map to create CircuitBreakerConfig.
+(defn ^CircuitBreaker circuit-breaker
+  "Create a circuit breaker with a `name` and a circuit breaker configurations map.
+
+   The `name` argument is only used to register this newly created circuit
+   breaker to a CircuitBreakerRegistry. If you don't want to bind this circuit
+   breaker with a CircuitBreakerRegistry, the `name` argument is ignored.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   to create CircuitBreakerConfig.
+   within the circuit breaker configurations map.
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry,
-   you can provide a CircuitBreakerRegistry under :registry key. If you do
-   not provide any other configurations, the newly created circuit breaker
-   will inherit the CircuitBreakerConfig from this provided CircuitBreakerRegistry
+   you need to put :registry key with a CircuitBreakerRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   circuit breaker will inherit circuit breaker configurations from this
+   provided CircuitBreakerRegistry
    Example:
    (circuit-breaker my-breaker {:registry my-registry})
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry
-   and you want to use a new CircuitBreakerConfig overwriting the
-   CircuitBreakerConfig inherited from the registered CircuitBreakerRegistry,
-   you need not only provide the :registry key with the CircuitBreakerRegistry
-   you want to register to but also provide other circuit breaker configuration.
+   and you want to use new circuit breaker configurations to overwrite the configurations
+   inherited from the registered CircuitBreakerRegistry,
+   you need not only provide the :registry key with the CircuitBreakerRegistry in `config`
+   argument but also provide other circuit breaker configurations you'd like to overwrite.
    Example:
    (circuit-breaker my-breaker {:registry my-registry
                                 :failure-rate-threshold 50.0
                                 :ring-buffer-size-in-closed-state 30
                                 :ring-buffer-size-in-half-open-state 20})
 
-   If you only want to create a circuit and not register it to any
-   CircuitBreakerRegistry, you just need to provide the configuration map
-   which can be used to create CircuitBreakerConfig. The `name` argument is ignored.
+   If you only want to create a circuit breaker and not register it to any
+   CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
+   argument. The `name` argument is ignored.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within configuration map."
+   within the circuit breaker configuration map."
   [^String name config]
   (let [^CircuitBreakerRegistry registry (:registry config)
         config (dissoc config :registry)]
@@ -200,40 +205,40 @@
   "Define a circuit breaker under `name` and use the same name to register
    the newly created circuit breaker to circuit breaker registry.
 
-   The argument `config` is used to create CircuitBreakerConfig which then
-   be used to create circuit breaker. Please refer to `circuit-breaker-config`
-   for allowed key value pairs to create CircuitBreakerConfig.
+   Please refer to `circuit-breaker-config` for allowed key value pairs
+   within the circuit breaker configurations map.
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry,
-   you can provide a CircuitBreakerRegistry under :registry key. If you do
-   not provide any other configurations, the newly created circuit breaker
-   will inherit the CircuitBreakerConfig from this provided CircuitBreakerRegistry
+   you need to put :registry key with a CircuitBreakerRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   circuit breaker will inherit circuit breaker configurations from this
+   provided CircuitBreakerRegistry
    Example:
-   (circuit-breaker my-breaker {:registry my-registry})
+   (defbreaker my-breaker {:registry my-registry})
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry
-   and you want to use a new CircuitBreakerConfig overwriting the
-   CircuitBreakerConfig inherited from the registered CircuitBreakerRegistry,
-   you need not only provide the :registry key with the CircuitBreakerRegistry
-   you want to register to but also provide other circuit breaker configuration.
+   and you want to use new circuit breaker configurations to overwrite the configurations
+   inherited from the registered CircuitBreakerRegistry,
+   you need not only provide the :registry key with the CircuitBreakerRegistry in `config`
+   argument but also provide other circuit breaker configurations you'd like to overwrite.
    Example:
-   (circuit-breaker my-breaker {:registry my-registry
-                                :failure-rate-threshold 50.0
-                                :ring-buffer-size-in-closed-state 30
-                                :ring-buffer-size-in-half-open-state 20})
+   (defbreaker my-breaker {:registry my-registry
+                           :failure-rate-threshold 50.0
+                           :ring-buffer-size-in-closed-state 30
+                           :ring-buffer-size-in-half-open-state 20})
 
-   If you only want to create a circuit and not register it to any
-   CircuitBreakerRegistry, you just need to provide the configuration map
-   which can be used to create CircuitBreakerConfig. The `name` argument is ignored.
+   If you only want to create a circuit breaker and not register it to any
+   CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
+   argument.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within configuration map."
+   within the circuit breaker configuration map."
   [name config]
   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (circuit-breaker ~name-in-string ~config))))
 
-(defn name
+(defn ^String name
   "Get the name of this CircuitBreaker"
   [^CircuitBreaker breaker]
   (.getName breaker))
@@ -244,7 +249,7 @@
   [^CircuitBreaker breaker]
   (u/enum->keyword (.getState breaker)))
 
-(defn config
+(defn ^CircuitBreakerConfig config
   "Returns the configurations of this CircuitBreaker"
   [^CircuitBreaker breaker]
   (.getCircuitBreakerConfig breaker))
