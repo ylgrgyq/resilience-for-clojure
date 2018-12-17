@@ -77,12 +77,12 @@
 
 (s/def :ratelimiter/timeout-millis int?)
 (s/def :ratelimiter/limit-for-period int?)
-(s/def :ratelimiter/limit-refresh-period-millis int?)
+(s/def :ratelimiter/limit-refresh-period-nanos int?)
 
 (s/def :ratelimiter/rate-limiter-config
   (only-keys :opt-un [:ratelimiter/timeout-millis
                       :ratelimiter/limit-for-period
-                      :ratelimiter/limit-refresh-period-millis]))
+                      :ratelimiter/limit-refresh-period-nanos]))
 
 ;; bulkhead
 

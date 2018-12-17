@@ -11,55 +11,103 @@
 
 ;; breaker
 
-(defmacro execute-with-breaker [breaker & body]
+(defmacro execute-with-breaker
+  "Execute the following codes with the protection
+   of a circuit breaker given by `breaker` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  [breaker & body]
   (let [breaker (vary-meta breaker assoc :tag `CircuitBreaker)
         f (with-meta `(to-fn ~@body) {:tag `Callable})]
     `(.executeCallable ~breaker ~f)))
 
-(defn with-breaker [^CircuitBreaker breaker f]
+(defn with-breaker
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a circuit breaker given by `breaker` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^CircuitBreaker breaker f]
   (CircuitBreaker/decorateCallable breaker f))
 
 ;; retry
 
-(defmacro execute-with-retry [retry & body]
+(defmacro execute-with-retry
+  "Execute the following codes with the protection
+   of a retry policy given by `retry` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  [retry & body]
   (let [retry (vary-meta retry assoc :tag `Retry)
         f (with-meta `(to-fn ~@body) {:tag `Callable})]
     `(.executeCallable ~retry ~f)))
 
-(defn with-retry [^Retry r f]
-  (Retry/decorateCallable r f))
+(defn with-retry
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a retry policy given by `retry` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^Retry retry f]
+  (Retry/decorateCallable retry f))
 
 ;; bulkhead
 
-(defmacro execute-with-bulkhead [^Bulkhead bulkhead & body]
+(defmacro execute-with-bulkhead
+  "Execute the following codes with the protection
+   of a bulkhead given by `bulkhead` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  [^Bulkhead bulkhead & body]
   (let [bulkhead (vary-meta bulkhead assoc :tag `Bulkhead)
         f (with-meta `(to-fn ~@body) {:tag `Callable})]
     `(.executeCallable ~bulkhead ~f)))
 
-(defn with-bulkhead [^Bulkhead h f]
-  (Bulkhead/decorateCallable h f))
+(defn with-bulkhead
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a bulkhead given by `bulkhead` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^Bulkhead bulkhead f]
+  (Bulkhead/decorateCallable bulkhead f))
 
 ;; rate limiter
 
 (defmacro execute-with-rate-limiter
-  [ratelimiter & body]
-  "Please take care that you can not put `(recur)` in `body` otherwise you'll got an infinite loop."
-  (let [ratelimiter (vary-meta ratelimiter assoc :tag `RateLimiter)
+  [rate-limiter & body]
+  "Execute the following codes with the protection
+   of a rate limiter given by `rate-limiter` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  (let [ratelimiter (vary-meta rate-limiter assoc :tag `RateLimiter)
         f (with-meta `(to-fn ~@body) {:tag `Callable})]
     `(.executeCallable ~ratelimiter ~f)))
 
-(defn with-rate-limiter [^RateLimiter r f]
-  (RateLimiter/decorateCallable r f))
+(defn with-rate-limiter
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a rate limiter given by `rate-limiter` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^RateLimiter rate-limiter f]
+  (RateLimiter/decorateCallable rate-limiter f))
 
 ;; time limiter
 
-(defmacro execute-with-time-limiter [^TimeLimiter timelimiter & body]
+(defmacro execute-with-time-limiter
+  "Execute the following codes with the protection
+   of a time limiter given by `time-limiter` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  [^TimeLimiter timelimiter & body]
   (let [timelimiter (vary-meta timelimiter assoc :tag `TimeLimiter)]
     `(.executeFutureSupplier ~timelimiter (reify Supplier
                                             (get [_] (do ~@body))))))
 
-(defn with-time-limiter [^TimeLimiter t f]
-  (TimeLimiter/decorateFutureSupplier t
+(defn with-time-limiter
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a time limiter given by `time-limiter` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^TimeLimiter time-limiter f]
+  (TimeLimiter/decorateFutureSupplier time-limiter
                                       (reify Supplier
                                         (get [_] (f)))))
 
@@ -101,8 +149,8 @@
            (.call ~wraped-fn)
            ~@catch-blocks)))))
 
-(defmacro recover-from [exception failover-fn wraped-fn]
-  (recover-from* exception failover-fn wraped-fn))
+(defmacro recover-from [exceptions failover-fn wraped-fn]
+  (recover-from* exceptions failover-fn wraped-fn))
 
 (defmacro recover [failover-fn wraped-fn]
   (recover-from* 'Exception failover-fn wraped-fn))

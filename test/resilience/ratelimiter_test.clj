@@ -6,8 +6,8 @@
   (:import (java.util.concurrent TimeUnit)
            (io.github.resilience4j.ratelimiter RequestNotPermitted)))
 
-(defn- duration-millis [start-nanos]
-  (.toMillis TimeUnit/NANOSECONDS (- (System/nanoTime) start-nanos)))
+(defn- duration-nanos [start-nanos]
+  (- (System/nanoTime) start-nanos))
 
 (defn- drain-permissions [testing-rate-limiter limiter-config]
   (let [c (volatile! 0)
@@ -23,7 +23,7 @@
   (testing "do not need to wait when consume at most limit-for-period permissions continuously"
     (let [limiter-config {:timeout-millis              0
                           :limit-for-period            100
-                          :limit-refresh-period-millis 1000}]
+                          :limit-refresh-period-nanos (.toNanos TimeUnit/SECONDS 1)}]
       (defratelimiter testing-rate-limiter limiter-config)
       (is (= (drain-permissions testing-rate-limiter limiter-config)
              (:limit-for-period limiter-config)))))
@@ -31,7 +31,7 @@
   (testing "when no permissions left next request must wait at least limit-refresh-period-millis for more permissions"
     (let [limiter-config {:timeout-millis              200
                           :limit-for-period            1
-                          :limit-refresh-period-millis 200}
+                          :limit-refresh-period-nanos (.toNanos TimeUnit/MILLISECONDS 200)}
           c (volatile! 0)
           on-successfule-acquire-times (atom 0)
           on-successfule-acquire-fn (fn [] (swap! on-successfule-acquire-times inc))]
@@ -49,15 +49,15 @@
       (let [start (System/nanoTime)]
         (resilience/execute-with-rate-limiter testing-rate-limiter
           (vswap! c inc))
-        (let [d (duration-millis start)]
-          (is (<= d (:limit-refresh-period-millis limiter-config)))))
+        (let [d (duration-nanos start)]
+          (is (<= d (:limit-refresh-period-nanos limiter-config)))))
 
       (doseq [_ (range 10)]
         (let [start (System/nanoTime)]
           (resilience/execute-with-rate-limiter testing-rate-limiter
             (vswap! c inc))
-          (is (< (/ (Math/abs (- (duration-millis start) (:limit-refresh-period-millis limiter-config)))
-                    (:limit-refresh-period-millis limiter-config))
+          (is (< (/ (Math/abs (- (duration-nanos start) (:limit-refresh-period-nanos limiter-config)))
+                    (:limit-refresh-period-nanos limiter-config))
                  0.05))))
 
       (Thread/sleep 300)
@@ -68,7 +68,7 @@
   (testing "failed to acquire permission"
     (let [limiter-config {:timeout-millis              50
                           :limit-for-period            1
-                          :limit-refresh-period-millis 1000}
+                          :limit-refresh-period-nanos (.toNanos TimeUnit/SECONDS 1)}
           c (volatile! 0)
           on-failed-acquire-times (atom 0)
           on-failed-acquire-fn (fn [] (swap! on-failed-acquire-times inc))]
@@ -91,7 +91,7 @@
   (testing "do not need to wait when consume at most limit-for-period permissions continuously"
     (let [limiter-config {:timeout-millis              0
                           :limit-for-period            100
-                          :limit-refresh-period-millis 1000}]
+                          :limit-refresh-period-nanos (.toNanos TimeUnit/SECONDS 1)}]
       (defregistry testing-registry limiter-config)
       (defratelimiter testing-rate-limiter {:registry testing-registry})
 

@@ -6,7 +6,25 @@
            (io.github.resilience4j.bulkhead.event BulkheadEvent BulkheadEvent$Type)
            (io.github.resilience4j.core EventConsumer)))
 
-(defn ^BulkheadConfig bulkhead-config [opts]
+(defn ^BulkheadConfig bulkhead-config
+  "Create a BulkheadConfig.
+
+  Allowed options are:
+  * :max-concurrent-calls
+    Configures the max amount of concurrent calls the bulkhead will support.
+
+  * :max-wait-millis
+    Configures a maximum amount of time in ms the calling thread will wait
+    to enter the bulkhead. If bulkhead has space available, entry is
+    guaranteed and immediate. If bulkhead is full, calling threads will
+    contest for space, if it becomes available. :max-wait-millis can be set to 0.
+
+    Note: for threads running on an event-loop or equivalent (rx computation
+    pool, etc), setting :max-wait-time to 0 is highly recommended. Blocking an
+    event-loop thread will most likely have a negative effect on application
+    throughput.
+   "
+  [opts]
   (s/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
 
   (if (empty? opts)
@@ -20,21 +38,66 @@
 
       (.build config))))
 
-(defn ^BulkheadRegistry registry-with-config [^BulkheadConfig config]
-  (BulkheadRegistry/of config))
+(defn ^BulkheadRegistry registry-with-config
+  "Create a BulkheadRegistry with a bulkhead configurations map.
 
-(defmacro defregistry [name config]
+   Please refer to `bulkhead-config` for allowed key value pairs
+   within the bulkhead configuration map."
+  [^BulkheadConfig config]
+  (let [c (if (instance? BulkheadConfig config)
+            config
+            (bulkhead-config config))]
+    (BulkheadRegistry/of c)))
+
+(defmacro defregistry
+  "Define a BulkheadRegistry under `name` with a bulkhead configurations map.
+
+   Please refer to `bulkhead-config` for allowed key value pairs
+   within the bulkhead configuration map."
+  [name config]
   (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
     `(def ~sym
        (let [config# (bulkhead-config ~config)]
          (registry-with-config config#)))))
 
-(defn get-all-bulkheads [^BulkheadRegistry registry]
+(defn get-all-bulkheads
+  "Get all bulkhead registered to this bulkhead registry instance"
+  [^BulkheadRegistry registry]
   (let [heads (.getAllBulkheads registry)
         iter (.iterator heads)]
     (u/lazy-seq-from-iterator iter)))
 
-(defn bulkhead [^String name config]
+(defn ^Bulkhead bulkhead
+  "Create a bulkhead with a `name` and a bulkhead configurations map.
+
+   The `name` argument is only used to register this newly created bulkhead
+   to a BulkheadRegistry. If you don't want to bind this bulkhead with
+   a BulkheadRegistry, the `name` argument is ignored.
+
+   Please refer to `bulkhead-config` for allowed key value pairs
+   within the bulkhead configurations map.
+
+   If you want to register this bulkhead to a BulkheadRegistry,
+   you need to put :registry key with a BulkheadRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   bulkhead will inherit bulkhead configurations from this
+   provided BulkheadRegistry
+   Example:
+   (bulkhead my-bulkhead {:registry my-registry})
+
+   If you want to register this bulkhead to a BulkheadRegistry
+   and you want to use new bulkhead configurations to overwrite the configurations
+   inherited from the registered BulkheadRegistry,
+   you need not only provide the :registry key with the BulkheadRegistry in `config`
+   argument but also provide other bulkhead configurations you'd like to overwrite.
+   Example:
+   (bulkhead my-bulkhead {:registry my-registry
+                          :max-wait-millis 50})
+
+   If you only want to create a bulkhead and not register it to any
+   BulkheadRegistry, you just need to provide bulkhead configurations in `config`
+   argument. The `name` argument is ignored."
+  [^String name config]
   (let [^BulkheadRegistry registry (:registry config)
         config (dissoc config :registry)]
     (cond
@@ -49,28 +112,52 @@
       (let [config (bulkhead-config config)]
         (Bulkhead/of name ^BulkheadConfig config)))))
 
-;; name configs
-;; name registry
-;; name registry configs
-(defmacro defbulkhead [name config]
+(defmacro defbulkhead
+  "Define a bulkhead under `name` and use the same name to register
+   the newly created bulkhead to bulkhead registry.
+
+   Please refer to `bulkhead-config` for allowed key value pairs
+   within the bulkhead configurations map.
+
+   If you want to register this bulkhead to a BulkheadRegistry,
+   you need to put :registry key with a BulkheadRegistry in the `config`
+   argument. If you do not provide any other configurations, the newly created
+   bulkhead will inherit bulkhead configurations from this
+   provided BulkheadRegistry
+   Example:
+   (defbulkhead my-bulkhead {:registry my-registry})
+
+   If you want to register this bulkhead to a BulkheadRegistry
+   and you want to use new bulkhead configurations to overwrite the configurations
+   inherited from the registered BulkheadRegistry,
+   you need not only provide the :registry key with the BulkheadRegistry in `config`
+   argument but also provide other bulkhead configurations you'd like to overwrite.
+   Example:
+   (defbulkhead my-bulkhead {:registry my-registry
+                             :max-wait-millis 50})
+
+   If you only want to create a bulkhead and not register it to any
+   BulkheadRegistry, you just need to provide bulkhead configurations in `config`
+   argument."
+  [name config]
   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (bulkhead ~name-in-string ~config))))
 
-(defn name
+(defn ^String name
   "Get the name of this Bulkhead"
-  [^Bulkhead breaker]
-  (.getName breaker))
+  [^Bulkhead bulkhead]
+  (.getName bulkhead))
 
-(defn config
+(defn ^BulkheadConfig config
   "Get the Metrics of this Bulkhead"
-  [^Bulkhead breaker]
-  (.getBulkheadConfig breaker))
+  [^Bulkhead bulkhead]
+  (.getBulkheadConfig bulkhead))
 
 (defn metrics
   "Get the BulkheadConfig of this Bulkhead"
-  [^Bulkhead breaker]
-  (let [metric (.getMetrics breaker)]
+  [^Bulkhead bulkhead]
+  (let [metric (.getMetrics bulkhead)]
     {:available-concurrent-calls (.getAvailableConcurrentCalls metric)}))
 
 (def ^{:dynamic true

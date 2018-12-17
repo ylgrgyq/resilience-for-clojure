@@ -77,7 +77,7 @@ Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojur
 ;; allow at most 10 requests per second
 (ratelimiter/defratelimiter my-ratelimiter
   {:limit-for-period 10
-   :limit-refresh-period-millis 1000
+   :limit-refresh-period-nanos 1000
    :timeout-millis 1000})
 
 ;; do something with the protection of the ratelimiter
@@ -114,7 +114,7 @@ Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojur
 ;; define a ratelimiter
 (ratelimiter/defratelimiter my-ratelimiter
   {:limit-for-period 10
-   :limit-refresh-period-millis 1000
+   :limit-refresh-period-nanos 5000
    :timeout-millis 1000})
 
 ;; use them all together
