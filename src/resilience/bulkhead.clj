@@ -144,6 +144,11 @@
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (bulkhead ~name-in-string ~config))))
 
+(defn on-complete
+  "Records a completed call."
+  [^Bulkhead bulkhead]
+  (.onComplete bulkhead))
+
 (defn ^String name
   "Get the name of this Bulkhead"
   [^Bulkhead bulkhead]

@@ -232,6 +232,17 @@
         ^String name-in-string (str *ns* "/" name)]
     `(def ~sym (circuit-breaker ~name-in-string ~config))))
 
+(defn on-success
+  "Records a successful call."
+  [^CircuitBreaker breaker duration-in-nanos]
+  (.onSuccess breaker duration-in-nanos))
+
+(defn on-error
+  "Records a failed call.
+   This method must be invoked when a call failed."
+  [^CircuitBreaker breaker duration-in-nanos throwable]
+  (.onError breaker duration-in-nanos throwable))
+
 (defn ^String name
   "Get the name of this CircuitBreaker"
   [^CircuitBreaker breaker]
