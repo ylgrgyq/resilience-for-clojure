@@ -166,11 +166,10 @@
          (Retry/of name ^RetryConfig breaker-config))))))
 
 (defmacro defretry
-  "Define a retry under `name` and use the same name to register
-   the newly created retry to retry registry.
+  "Define a retry under `name` with a default or custom retry configuration.
 
    Please refer to `retry-config` for allowed key value pairs
-   within the retry configurations map.
+   within the retry configuration.
 
    If you want to register this retry to a RetryRegistry,
    you need to put :registry key with a RetryRegistry in the `config`
@@ -191,12 +190,16 @@
                        :wait-millis 5000})
 
    If you only want to create a retry and not register it to any
-   RetryRegistry, you just need to provide retry configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `Retry})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (retry ~name-in-string ~config))))
+   RetryRegistry, you just need to provide retry configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `Retry})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (Retry/ofDefaults name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `Retry})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (retry ~name-in-string ~config)))))
 
 (defn ^String name
   "Get the name of this Retry."

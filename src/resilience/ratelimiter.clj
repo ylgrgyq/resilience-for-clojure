@@ -124,11 +124,10 @@
          (RateLimiter/of name ^RateLimiterConfig config))))))
 
 (defmacro defratelimiter
-  "Define a rate limiter under `name` and use the same name to register
-   the newly created rate limiter to rate limiter registry.
+  "Define a rate limiter under `name` with a default or custom rate limiter configuration.
 
    Please refer to `rate-limiter-config` for allowed key value pairs
-   within the rate limiter configurations map.
+   within the rate limiter configuration.
 
    If you want to register this rate limiter to a RateLimiterRegistry,
    you need to put :registry key with a RateLimiterRegistry in the `config`
@@ -148,12 +147,16 @@
                                     :timeout-millis 50})
 
    If you only want to create a rate limiter and not register it to any
-   RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `RateLimiter})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (rate-limiter ~name-in-string ~config))))
+   RateLimiterRegistry, you just need to provide rate limiter configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `RateLimiter})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (RateLimiter/ofDefaults name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `RateLimiter})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (rate-limiter ~name-in-string ~config)))))
 
 (defn ^String name
   "Get the name of this RateLimiter"

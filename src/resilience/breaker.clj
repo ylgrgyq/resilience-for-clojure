@@ -203,11 +203,11 @@
          (CircuitBreaker/of name ^CircuitBreakerConfig config))))))
 
 (defmacro defbreaker
-  "Define a circuit breaker under `name` and use the same name to register
-   the newly created circuit breaker to circuit breaker registry.
+  "Define a circuit breaker under `name` with a default or custom circuit breaker
+   configuration.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within the circuit breaker configurations map.
+   within the circuit breaker configuration.
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry,
    you need to put :registry key with a CircuitBreakerRegistry in the `config`
@@ -229,12 +229,16 @@
                            :ring-buffer-size-in-half-open-state 20})
 
    If you only want to create a circuit breaker and not register it to any
-   CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (circuit-breaker ~name-in-string ~config))))
+   CircuitBreakerRegistry, you just need to provide circuit breaker configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (CircuitBreaker/ofDefaults name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (circuit-breaker ~name-in-string ~config)))))
 
 (defn on-success
   "Records a successful call."

@@ -34,7 +34,7 @@
   "Create a time limiter with a default or custom time limiter configuration.
 
    Please refer to `time-limiter-config` for allowed key value pairs
-   within the time limiter configurations map."
+   within the time limiter configuration."
   ([] (TimeLimiter/ofDefaults))
   ([config]
    (let [config (time-limiter-config config)]
@@ -44,8 +44,11 @@
   "Define a time limiter under `name`.
 
    Please refer to `time-limiter-config` for allowed key value pairs
-   within the rate limiter configurations map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
-    `(def ~sym (time-limiter ~config))))
+   within the time limiter configuration."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
+     `(def ~sym (TimeLimiter/ofDefaults))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
+     `(def ~sym (time-limiter ~config)))))
 

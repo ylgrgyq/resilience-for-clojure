@@ -2,3 +2,4 @@
 *.iml
 .nrepl-port
 target/
+.lein-failures

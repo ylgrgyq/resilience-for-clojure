@@ -118,11 +118,10 @@
          (Bulkhead/of name ^BulkheadConfig config))))))
 
 (defmacro defbulkhead
-  "Define a bulkhead under `name` and use the same name to register
-   the newly created bulkhead to bulkhead registry.
+  "Define a bulkhead under `name` with a default or custom configuration.
 
    Please refer to `bulkhead-config` for allowed key value pairs
-   within the bulkhead configurations map.
+   within the bulkhead configuration.
 
    If you want to register this bulkhead to a BulkheadRegistry,
    you need to put :registry key with a BulkheadRegistry in the `config`
@@ -142,12 +141,16 @@
                              :max-wait-millis 50})
 
    If you only want to create a bulkhead and not register it to any
-   BulkheadRegistry, you just need to provide bulkhead configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `Bulkhead})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (bulkhead ~name-in-string ~config))))
+   BulkheadRegistry, you just need to provide bulkhead configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (Bulkhead/ofDefaults name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (bulkhead ~name-in-string ~config)))))
 
 (defn on-complete
   "Records a completed call."
