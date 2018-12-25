@@ -31,7 +31,7 @@
   (s/verify-opt-map-keys-with-spec :ratelimiter/rate-limiter-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for rate limiter."))
+    (RateLimiterConfig/ofDefaults)
     (let [^RateLimiterConfig$Builder config (RateLimiterConfig/custom)]
       (when-let [timeout (:timeout-millis opts)]
         (.timeoutDuration config (Duration/ofMillis timeout)))
@@ -56,15 +56,19 @@
     (RateLimiterRegistry/of c)))
 
 (defmacro defregistry
-  "Define a RateLimiterRegistry under `name` with a rate limiter configurations map.
+  "Define a RateLimiterRegistry under `name` with a default or custom
+   rate limiter configuration.
 
    Please refer to `rate-limiter-config` for allowed key value pairs
    within the rate limiter configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
-    `(def ~sym
-       (let [config# (rate-limiter-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+    (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
+      `(def ~sym (RateLimiterRegistry/ofDefaults))))
+  ([name config]
+    (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
+      `(def ~sym
+         (let [config# (rate-limiter-config ~config)]
+           (registry-with-config config#))))))
 
 (defn get-all-rate-limiters
   "Get all rate limiters registered to this rate limiter registry instance"

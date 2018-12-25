@@ -94,7 +94,7 @@
   (s/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for circuit breaker."))
+    (CircuitBreakerConfig/ofDefaults)
     (let [^CircuitBreakerConfig$Builder config (CircuitBreakerConfig/custom)]
       (when-let [failure-threshold (:failure-rate-threshold opts)]
         (.failureRateThreshold config (float failure-threshold)))
@@ -133,16 +133,19 @@
     (CircuitBreakerRegistry/of c)))
 
 (defmacro defregistry
-  "Define a CircuitBreakerRegistry under `name` with a circuit breaker
-   configurations map.
+  "Define a CircuitBreakerRegistry under `name` with a default or custom
+   circuit breaker configuration.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
    within the circuit breaker configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
-    `(def ~sym
-       (let [config# (circuit-breaker-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
+     `(def ~sym (CircuitBreakerRegistry/ofDefaults))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
+     `(def ~sym
+        (let [config# (circuit-breaker-config ~config)]
+          (registry-with-config config#))))))
 
 (defn get-all-breakers
   "Get all circuit breakers registered to a CircuitBreakerRegistry"

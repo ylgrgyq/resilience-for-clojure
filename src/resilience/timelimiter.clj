@@ -20,7 +20,7 @@
   (s/verify-opt-map-keys-with-spec :timelimiter/time-limiter-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for time limiter."))
+    (TimeLimiterConfig/ofDefaults)
     (let [^TimeLimiterConfig$Builder config (TimeLimiterConfig/custom)]
       (when-let [timeout (:timeout-millis opts)]
         (.timeoutDuration config (Duration/ofMillis timeout)))

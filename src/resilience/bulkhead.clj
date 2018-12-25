@@ -28,7 +28,7 @@
   (s/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for bulkhead."))
+    (BulkheadConfig/ofDefaults)
     (let [^BulkheadConfig$Builder config (BulkheadConfig/custom)]
       (when-let [max-calls (:max-concurrent-calls opts)]
         (.maxConcurrentCalls config (int max-calls)))
@@ -50,15 +50,19 @@
     (BulkheadRegistry/of c)))
 
 (defmacro defregistry
-  "Define a BulkheadRegistry under `name` with a bulkhead configurations map.
+  "Define a BulkheadRegistry under `name` with a defual or custom
+   bulkhead configuration.
 
    Please refer to `bulkhead-config` for allowed key value pairs
    within the bulkhead configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
-    `(def ~sym
-       (let [config# (bulkhead-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
+     `(def ~sym (BulkheadRegistry/ofDefaults))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
+     `(def ~sym
+        (let [config# (bulkhead-config ~config)]
+          (registry-with-config config#))))))
 
 (defn get-all-bulkheads
   "Get all bulkhead registered to this bulkhead registry instance"

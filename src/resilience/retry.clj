@@ -61,7 +61,7 @@
   [opts]
   (s/verify-opt-map-keys-with-spec :retry/retry-config opts)
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for retry."))
+    (RetryConfig/ofDefaults)
     (let [^RetryConfig$Builder config (RetryConfig/custom)]
       (when-let [attempts (:max-attempts opts)]
         (.maxAttempts config (int attempts)))
@@ -97,15 +97,19 @@
     (RetryRegistry/of c)))
 
 (defmacro defregistry
-  "Define a RetryRegistry under `name` with a retry configurations map.
+  "Define a RetryRegistry under `name` with a default or custom
+   retry configuration.
 
    Please refer to `retry-config` for allowed key value pairs
    within the retry configuration map."
-  [name configs]
-  (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
-    `(def ~sym
-       (let [configs# (retry-config ~configs)]
-         (registry-with-config configs#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
+     `(def ~sym (RetryRegistry/ofDefaults))))
+  ([name configs]
+   (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
+     `(def ~sym
+        (let [configs# (retry-config ~configs)]
+          (registry-with-config configs#))))))
 
 (defn get-all-retries
   "Get all retries registered to this retry registry instance"
