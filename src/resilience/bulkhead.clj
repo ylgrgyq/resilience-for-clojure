@@ -146,7 +146,7 @@
   ([name]
    (let [sym (with-meta (symbol name) {:tag `Bulkhead})
          ^String name-in-string (str *ns* "/" name)]
-     `(def ~sym (bulkhead name-in-string))))
+     `(def ~sym (bulkhead ~name-in-string))))
   ([name config]
    (let [sym (with-meta (symbol name) {:tag `Bulkhead})
          ^String name-in-string (str *ns* "/" name)]
