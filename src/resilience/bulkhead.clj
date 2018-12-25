@@ -28,7 +28,7 @@
   (s/verify-opt-map-keys-with-spec :bulkhead/bulkhead-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for bulkhead."))
+    (BulkheadConfig/ofDefaults)
     (let [^BulkheadConfig$Builder config (BulkheadConfig/custom)]
       (when-let [max-calls (:max-concurrent-calls opts)]
         (.maxConcurrentCalls config (int max-calls)))
@@ -50,15 +50,19 @@
     (BulkheadRegistry/of c)))
 
 (defmacro defregistry
-  "Define a BulkheadRegistry under `name` with a bulkhead configurations map.
+  "Define a BulkheadRegistry under `name` with a defual or custom
+   bulkhead configuration.
 
    Please refer to `bulkhead-config` for allowed key value pairs
    within the bulkhead configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
-    `(def ~sym
-       (let [config# (bulkhead-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
+     `(def ~sym (BulkheadRegistry/ofDefaults))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `BulkheadRegistry})]
+     `(def ~sym
+        (let [config# (bulkhead-config ~config)]
+          (registry-with-config config#))))))
 
 (defn get-all-bulkheads
   "Get all bulkhead registered to this bulkhead registry instance"
@@ -68,7 +72,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^Bulkhead bulkhead
-  "Create a bulkhead with a `name` and a bulkhead configurations map.
+  "Create a bulkhead with a `name` and a default or custom bulkhead configuration.
 
    The `name` argument is only used to register this newly created bulkhead
    to a BulkheadRegistry. If you don't want to bind this bulkhead with
@@ -97,27 +101,27 @@
    If you only want to create a bulkhead and not register it to any
    BulkheadRegistry, you just need to provide bulkhead configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^BulkheadRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (bulkhead-config config)]
-        (.bulkhead registry name ^BulkheadConfig config))
+  ([^String name] (Bulkhead/ofDefaults name))
+  ([^String name config]
+   (let [^BulkheadRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (bulkhead-config config)]
+         (.bulkhead registry name ^BulkheadConfig config))
 
-      registry
-      (.bulkhead registry name)
+       registry
+       (.bulkhead registry name)
 
-      :else
-      (let [config (bulkhead-config config)]
-        (Bulkhead/of name ^BulkheadConfig config)))))
+       :else
+       (let [config (bulkhead-config config)]
+         (Bulkhead/of name ^BulkheadConfig config))))))
 
 (defmacro defbulkhead
-  "Define a bulkhead under `name` and use the same name to register
-   the newly created bulkhead to bulkhead registry.
+  "Define a bulkhead under `name` with a default or custom configuration.
 
    Please refer to `bulkhead-config` for allowed key value pairs
-   within the bulkhead configurations map.
+   within the bulkhead configuration.
 
    If you want to register this bulkhead to a BulkheadRegistry,
    you need to put :registry key with a BulkheadRegistry in the `config`
@@ -137,12 +141,16 @@
                              :max-wait-millis 50})
 
    If you only want to create a bulkhead and not register it to any
-   BulkheadRegistry, you just need to provide bulkhead configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `Bulkhead})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (bulkhead ~name-in-string ~config))))
+   BulkheadRegistry, you just need to provide bulkhead configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (bulkhead ~name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `Bulkhead})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (bulkhead ~name-in-string ~config)))))
 
 (defn on-complete
   "Records a completed call."

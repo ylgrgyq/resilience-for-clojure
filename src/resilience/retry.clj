@@ -61,7 +61,7 @@
   [opts]
   (s/verify-opt-map-keys-with-spec :retry/retry-config opts)
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for retry."))
+    (RetryConfig/ofDefaults)
     (let [^RetryConfig$Builder config (RetryConfig/custom)]
       (when-let [attempts (:max-attempts opts)]
         (.maxAttempts config (int attempts)))
@@ -97,15 +97,19 @@
     (RetryRegistry/of c)))
 
 (defmacro defregistry
-  "Define a RetryRegistry under `name` with a retry configurations map.
+  "Define a RetryRegistry under `name` with a default or custom
+   retry configuration.
 
    Please refer to `retry-config` for allowed key value pairs
    within the retry configuration map."
-  [name configs]
-  (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
-    `(def ~sym
-       (let [configs# (retry-config ~configs)]
-         (registry-with-config configs#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
+     `(def ~sym (RetryRegistry/ofDefaults))))
+  ([name configs]
+   (let [sym (with-meta (symbol name) {:tag `RetryRegistry})]
+     `(def ~sym
+        (let [configs# (retry-config ~configs)]
+          (registry-with-config configs#))))))
 
 (defn get-all-retries
   "Get all retries registered to this retry registry instance"
@@ -115,7 +119,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^Retry retry
-  "Create a retry with a `name` and a retry configurations map.
+  "Create a retry with a `name` and a default or custom retry configuration.
 
    The `name` argument is only used to register this newly created retry
    to a RetryRegistry. If you don't want to bind this retry with
@@ -145,27 +149,27 @@
    If you only want to create a retry and not register it to any
    RetryRegistry, you just need to provide retry configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^RetryRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [breaker-config (retry-config config)]
-        (.retry registry name ^RetryConfig breaker-config))
+  ([^String name] (Retry/ofDefaults name))
+  ([^String name config]
+   (let [^RetryRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [breaker-config (retry-config config)]
+         (.retry registry name ^RetryConfig breaker-config))
 
-      registry
-      (.retry registry name)
+       registry
+       (.retry registry name)
 
-      :else
-      (let [breaker-config (retry-config config)]
-        (Retry/of name ^RetryConfig breaker-config)))))
+       :else
+       (let [breaker-config (retry-config config)]
+         (Retry/of name ^RetryConfig breaker-config))))))
 
 (defmacro defretry
-  "Define a retry under `name` and use the same name to register
-   the newly created retry to retry registry.
+  "Define a retry under `name` with a default or custom retry configuration.
 
    Please refer to `retry-config` for allowed key value pairs
-   within the retry configurations map.
+   within the retry configuration.
 
    If you want to register this retry to a RetryRegistry,
    you need to put :registry key with a RetryRegistry in the `config`
@@ -186,12 +190,16 @@
                        :wait-millis 5000})
 
    If you only want to create a retry and not register it to any
-   RetryRegistry, you just need to provide retry configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `Retry})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (retry ~name-in-string ~config))))
+   RetryRegistry, you just need to provide retry configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `Retry})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (retry ~name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `Retry})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (retry ~name-in-string ~config)))))
 
 (defn ^String name
   "Get the name of this Retry."

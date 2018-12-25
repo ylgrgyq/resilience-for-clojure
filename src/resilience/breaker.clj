@@ -94,7 +94,7 @@
   (s/verify-opt-map-keys-with-spec :breaker/breaker-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for circuit breaker."))
+    (CircuitBreakerConfig/ofDefaults)
     (let [^CircuitBreakerConfig$Builder config (CircuitBreakerConfig/custom)]
       (when-let [failure-threshold (:failure-rate-threshold opts)]
         (.failureRateThreshold config (float failure-threshold)))
@@ -133,16 +133,19 @@
     (CircuitBreakerRegistry/of c)))
 
 (defmacro defregistry
-  "Define a CircuitBreakerRegistry under `name` with a circuit breaker
-   configurations map.
+  "Define a CircuitBreakerRegistry under `name` with a default or custom
+   circuit breaker configuration.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
    within the circuit breaker configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
-    `(def ~sym
-       (let [config# (circuit-breaker-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
+     `(def ~sym (CircuitBreakerRegistry/ofDefaults))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreakerRegistry})]
+     `(def ~sym
+        (let [config# (circuit-breaker-config ~config)]
+          (registry-with-config config#))))))
 
 (defn get-all-breakers
   "Get all circuit breakers registered to a CircuitBreakerRegistry"
@@ -152,7 +155,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^CircuitBreaker circuit-breaker
-  "Create a circuit breaker with a `name` and a circuit breaker configurations map.
+  "Create a circuit breaker with a `name` and a default or custom circuit breaker configuration.
 
    The `name` argument is only used to register this newly created circuit
    breaker to a CircuitBreakerRegistry. If you don't want to bind this circuit
@@ -183,27 +186,28 @@
    If you only want to create a circuit breaker and not register it to any
    CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^CircuitBreakerRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (circuit-breaker-config config)]
-        (.circuitBreaker registry name ^CircuitBreakerConfig config))
+  ([^String name] (CircuitBreaker/ofDefaults name))
+  ([^String name config]
+   (let [^CircuitBreakerRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (circuit-breaker-config config)]
+         (.circuitBreaker registry name ^CircuitBreakerConfig config))
 
-      registry
-      (.circuitBreaker registry name)
+       registry
+       (.circuitBreaker registry name)
 
-      :else
-      (let [config (circuit-breaker-config config)]
-        (CircuitBreaker/of name ^CircuitBreakerConfig config)))))
+       :else
+       (let [config (circuit-breaker-config config)]
+         (CircuitBreaker/of name ^CircuitBreakerConfig config))))))
 
 (defmacro defbreaker
-  "Define a circuit breaker under `name` and use the same name to register
-   the newly created circuit breaker to circuit breaker registry.
+  "Define a circuit breaker under `name` with a default or custom circuit breaker
+   configuration.
 
    Please refer to `circuit-breaker-config` for allowed key value pairs
-   within the circuit breaker configurations map.
+   within the circuit breaker configuration.
 
    If you want to register this circuit breaker to a CircuitBreakerRegistry,
    you need to put :registry key with a CircuitBreakerRegistry in the `config`
@@ -225,12 +229,16 @@
                            :ring-buffer-size-in-half-open-state 20})
 
    If you only want to create a circuit breaker and not register it to any
-   CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (circuit-breaker ~name-in-string ~config))))
+   CircuitBreakerRegistry, you just need to provide circuit breaker configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (circuit-breaker ~name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (circuit-breaker ~name-in-string ~config)))))
 
 (defn on-success
   "Records a successful call."

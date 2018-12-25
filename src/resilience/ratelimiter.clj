@@ -31,7 +31,7 @@
   (s/verify-opt-map-keys-with-spec :ratelimiter/rate-limiter-config opts)
 
   (if (empty? opts)
-    (throw (IllegalArgumentException. "please provide not empty configuration for rate limiter."))
+    (RateLimiterConfig/ofDefaults)
     (let [^RateLimiterConfig$Builder config (RateLimiterConfig/custom)]
       (when-let [timeout (:timeout-millis opts)]
         (.timeoutDuration config (Duration/ofMillis timeout)))
@@ -56,15 +56,19 @@
     (RateLimiterRegistry/of c)))
 
 (defmacro defregistry
-  "Define a RateLimiterRegistry under `name` with a rate limiter configurations map.
+  "Define a RateLimiterRegistry under `name` with a default or custom
+   rate limiter configuration.
 
    Please refer to `rate-limiter-config` for allowed key value pairs
    within the rate limiter configuration map."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
-    `(def ~sym
-       (let [config# (rate-limiter-config ~config)]
-         (registry-with-config config#)))))
+  ([name]
+    (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
+      `(def ~sym (RateLimiterRegistry/ofDefaults))))
+  ([name config]
+    (let [sym (with-meta (symbol name) {:tag `RateLimiterRegistry})]
+      `(def ~sym
+         (let [config# (rate-limiter-config ~config)]
+           (registry-with-config config#))))))
 
 (defn get-all-rate-limiters
   "Get all rate limiters registered to this rate limiter registry instance"
@@ -74,7 +78,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^RateLimiter rate-limiter
-  "Create a rate limiter with a `name` and a rate limiter configurations map.
+  "Create a rate limiter with a `name` and a default or custom rate limiter configuration.
 
    The `name` argument is only used to register this newly created rate limiter
    to a RateLimiterRegistry. If you don't want to bind this rate limiter with
@@ -103,27 +107,27 @@
    If you only want to create a rate limiter and not register it to any
    RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^RateLimiterRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (rate-limiter-config config)]
-        (.rateLimiter registry name ^RateLimiterConfig config))
+  ([^String name] (RateLimiter/ofDefaults name))
+  ([^String name config]
+   (let [^RateLimiterRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (rate-limiter-config config)]
+         (.rateLimiter registry name ^RateLimiterConfig config))
 
-      registry
-      (.rateLimiter registry name)
+       registry
+       (.rateLimiter registry name)
 
-      :else
-      (let [config (rate-limiter-config config)]
-        (RateLimiter/of name ^RateLimiterConfig config)))))
+       :else
+       (let [config (rate-limiter-config config)]
+         (RateLimiter/of name ^RateLimiterConfig config))))))
 
 (defmacro defratelimiter
-  "Define a rate limiter under `name` and use the same name to register
-   the newly created rate limiter to rate limiter registry.
+  "Define a rate limiter under `name` with a default or custom rate limiter configuration.
 
    Please refer to `rate-limiter-config` for allowed key value pairs
-   within the rate limiter configurations map.
+   within the rate limiter configuration.
 
    If you want to register this rate limiter to a RateLimiterRegistry,
    you need to put :registry key with a RateLimiterRegistry in the `config`
@@ -143,12 +147,16 @@
                                     :timeout-millis 50})
 
    If you only want to create a rate limiter and not register it to any
-   RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
-   argument."
-  [name config]
-  (let [sym (with-meta (symbol name) {:tag `RateLimiter})
-        ^String name-in-string (str *ns* "/" name)]
-    `(def ~sym (rate-limiter ~name-in-string ~config))))
+   RateLimiterRegistry, you just need to provide rate limiter configuration in `config`
+   argument without :registry keyword."
+  ([name]
+   (let [sym (with-meta (symbol name) {:tag `RateLimiter})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (rate-limiter ~name-in-string))))
+  ([name config]
+   (let [sym (with-meta (symbol name) {:tag `RateLimiter})
+         ^String name-in-string (str *ns* "/" name)]
+     `(def ~sym (rate-limiter ~name-in-string ~config)))))
 
 (defn ^String name
   "Get the name of this RateLimiter"

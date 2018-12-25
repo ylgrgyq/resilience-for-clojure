@@ -56,7 +56,7 @@
         (let [start (System/nanoTime)]
           (resilience/execute-with-rate-limiter testing-rate-limiter
             (vswap! c inc))
-          (is (< (/ (Math/abs (- (duration-nanos start) (:limit-refresh-period-nanos limiter-config)))
+          (is (< (/ (Math/abs (long (- (duration-nanos start) (:limit-refresh-period-nanos limiter-config))))
                     (:limit-refresh-period-nanos limiter-config))
                  0.05))))
 
