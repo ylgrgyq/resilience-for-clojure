@@ -6,7 +6,9 @@
            (io.github.resilience4j.timelimiter TimeLimiter)
            (java.util.function Supplier)))
 
-(defmacro to-fn [& body]
+(defmacro to-fn
+  "Wrap body to a function."
+  [& body]
   `(fn [] (do ~@body)))
 
 ;; breaker
@@ -113,17 +115,37 @@
 
 ;; gather together
 
-(defmacro execute-callable* [f]
+(defmacro execute-callable*
+  "Internal use only. Sorry for not founding a way to conceal it."
+  [f]
   (let [f (vary-meta f assoc :tag `Callable)]
     `(.call ^Callable ~f)))
 
 (defmacro execute
+  "Create a function with the `execute-body`, applies any wrapper functions
+   in the `args` and then executes it.
+   ex: (execute
+         (let [data (fetch-data-from db)]
+           (save data))
+         (with-breaker breaker)
+         (with-retry retry-policy)
+         (recover-from [CircuitBreakerOpenException ExceptionInfo]
+                       (fn [_] (log/error \"circuit breaker open\")))
+         (recover (fn [ex] (log/error ex \"unexpected exception happened\"))))"
   [execute-body & args]
   `(->> (to-fn ~execute-body)
         ~@args
         execute-callable*))
 
-(defmacro with-resilience-family [family-members & body]
+(defmacro with-resilience-family
+  "Protected forms in `body` with resilience family members.
+   ex:  (with-resilience-family
+          [:retry retry-policy :breaker breaker :bulkhead bulkhead]
+          (let [data (fetch-data-from db)]
+            (save data)))
+   Please remember to catch Exceptions which may thrown from resilience family members.
+   "
+  [family-members & body]
   (let [wrappers (map #(let [[k v] %]
                          (list (symbol (str "resilience.core/with-" (name k))) v))
                       (partition-all 2 family-members))]
@@ -133,7 +155,8 @@
           execute-callable*)))
 
 (defn- recover-from* [exceptions failover-fn wraped-fn]
-  (let [wraped-fn (vary-meta wraped-fn assoc :tag `Callable)
+  (let [failover-fn (or failover-fn (fn [_] nil))
+        wraped-fn (vary-meta wraped-fn assoc :tag `Callable)
         handler (gensym "handler-fn-")
         catch-blocks (if (sequential? exceptions)
                        (let [ex-name-list (repeatedly (count exceptions)
@@ -149,8 +172,23 @@
            (.call ~wraped-fn)
            ~@catch-blocks)))))
 
-(defmacro recover-from [exceptions failover-fn wraped-fn]
-  (recover-from* exceptions failover-fn wraped-fn))
+(defmacro recover-from
+  "Using with `resilience.core/execute` to recover from enumerated exceptions list.
+   You can chose to provide a failover function which will be evaluated when one of
+   enumerated exception occurred. If no failover function provided, then nil will
+   be returned when exception happened."
+  ([exceptions wraped-fn]
+   (recover-from* exceptions nil wraped-fn))
+  ([exceptions failover-fn wraped-fn]
+   (recover-from* exceptions failover-fn wraped-fn)))
 
-(defmacro recover [failover-fn wraped-fn]
-  (recover-from* 'Exception failover-fn wraped-fn))
+(defmacro recover
+  "Like `resilience.core/recover-from` but will catch any exceptions inherited
+   from java.lang.Exception.
+   You can chose to provide a failover function which will be evaluated when any
+   exceptions occurred. If no failover function provided, then nil will
+   be returned any exceptions happened."
+  ([wraped-fn]
+   (recover-from* 'Exception nil wraped-fn))
+  ([failover-fn wraped-fn]
+   (recover-from* 'Exception failover-fn wraped-fn)))
