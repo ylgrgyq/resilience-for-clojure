@@ -47,7 +47,7 @@
    within the time limiter configuration."
   ([name]
    (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
-     `(def ~sym (TimeLimiter/ofDefaults))))
+     `(def ~sym (time-limiter))))
   ([name config]
    (let [sym (with-meta (symbol name) {:tag `TimeLimiter})]
      `(def ~sym (time-limiter ~config)))))

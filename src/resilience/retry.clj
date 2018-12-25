@@ -195,7 +195,7 @@
   ([name]
    (let [sym (with-meta (symbol name) {:tag `Retry})
          ^String name-in-string (str *ns* "/" name)]
-     `(def ~sym (Retry/ofDefaults name-in-string))))
+     `(def ~sym (retry name-in-string))))
   ([name config]
    (let [sym (with-meta (symbol name) {:tag `Retry})
          ^String name-in-string (str *ns* "/" name)]

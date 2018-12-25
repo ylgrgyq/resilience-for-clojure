@@ -152,7 +152,7 @@
   ([name]
    (let [sym (with-meta (symbol name) {:tag `RateLimiter})
          ^String name-in-string (str *ns* "/" name)]
-     `(def ~sym (RateLimiter/ofDefaults name-in-string))))
+     `(def ~sym (rate-limiter name-in-string))))
   ([name config]
    (let [sym (with-meta (symbol name) {:tag `RateLimiter})
          ^String name-in-string (str *ns* "/" name)]

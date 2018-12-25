@@ -234,7 +234,7 @@
   ([name]
    (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
          ^String name-in-string (str *ns* "/" name)]
-     `(def ~sym (CircuitBreaker/ofDefaults name-in-string))))
+     `(def ~sym (circuit-breaker name-in-string))))
   ([name config]
    (let [sym (with-meta (symbol name) {:tag `CircuitBreaker})
          ^String name-in-string (str *ns* "/" name)]
