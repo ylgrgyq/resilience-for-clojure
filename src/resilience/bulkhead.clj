@@ -72,7 +72,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^Bulkhead bulkhead
-  "Create a bulkhead with a `name` and a bulkhead configurations map.
+  "Create a bulkhead with a `name` and a default or custom bulkhead configuration.
 
    The `name` argument is only used to register this newly created bulkhead
    to a BulkheadRegistry. If you don't want to bind this bulkhead with
@@ -101,20 +101,21 @@
    If you only want to create a bulkhead and not register it to any
    BulkheadRegistry, you just need to provide bulkhead configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^BulkheadRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (bulkhead-config config)]
-        (.bulkhead registry name ^BulkheadConfig config))
+  ([^String name] (Bulkhead/ofDefaults name))
+  ([^String name config]
+   (let [^BulkheadRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (bulkhead-config config)]
+         (.bulkhead registry name ^BulkheadConfig config))
 
-      registry
-      (.bulkhead registry name)
+       registry
+       (.bulkhead registry name)
 
-      :else
-      (let [config (bulkhead-config config)]
-        (Bulkhead/of name ^BulkheadConfig config)))))
+       :else
+       (let [config (bulkhead-config config)]
+         (Bulkhead/of name ^BulkheadConfig config))))))
 
 (defmacro defbulkhead
   "Define a bulkhead under `name` and use the same name to register

@@ -155,7 +155,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^CircuitBreaker circuit-breaker
-  "Create a circuit breaker with a `name` and a circuit breaker configurations map.
+  "Create a circuit breaker with a `name` and a default or custom circuit breaker configuration.
 
    The `name` argument is only used to register this newly created circuit
    breaker to a CircuitBreakerRegistry. If you don't want to bind this circuit
@@ -186,20 +186,21 @@
    If you only want to create a circuit breaker and not register it to any
    CircuitBreakerRegistry, you just need to provide circuit breaker configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^CircuitBreakerRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (circuit-breaker-config config)]
-        (.circuitBreaker registry name ^CircuitBreakerConfig config))
+  ([^String name] (CircuitBreaker/ofDefaults name))
+  ([^String name config]
+   (let [^CircuitBreakerRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (circuit-breaker-config config)]
+         (.circuitBreaker registry name ^CircuitBreakerConfig config))
 
-      registry
-      (.circuitBreaker registry name)
+       registry
+       (.circuitBreaker registry name)
 
-      :else
-      (let [config (circuit-breaker-config config)]
-        (CircuitBreaker/of name ^CircuitBreakerConfig config)))))
+       :else
+       (let [config (circuit-breaker-config config)]
+         (CircuitBreaker/of name ^CircuitBreakerConfig config))))))
 
 (defmacro defbreaker
   "Define a circuit breaker under `name` and use the same name to register

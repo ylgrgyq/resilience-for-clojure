@@ -119,7 +119,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^Retry retry
-  "Create a retry with a `name` and a retry configurations map.
+  "Create a retry with a `name` and a default or custom retry configuration.
 
    The `name` argument is only used to register this newly created retry
    to a RetryRegistry. If you don't want to bind this retry with
@@ -149,20 +149,21 @@
    If you only want to create a retry and not register it to any
    RetryRegistry, you just need to provide retry configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^RetryRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [breaker-config (retry-config config)]
-        (.retry registry name ^RetryConfig breaker-config))
+  ([^String name] (Retry/ofDefaults name))
+  ([^String name config]
+   (let [^RetryRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [breaker-config (retry-config config)]
+         (.retry registry name ^RetryConfig breaker-config))
 
-      registry
-      (.retry registry name)
+       registry
+       (.retry registry name)
 
-      :else
-      (let [breaker-config (retry-config config)]
-        (Retry/of name ^RetryConfig breaker-config)))))
+       :else
+       (let [breaker-config (retry-config config)]
+         (Retry/of name ^RetryConfig breaker-config))))))
 
 (defmacro defretry
   "Define a retry under `name` and use the same name to register

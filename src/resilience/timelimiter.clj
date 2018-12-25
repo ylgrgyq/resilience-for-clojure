@@ -31,13 +31,14 @@
       (.build config))))
 
 (defn ^TimeLimiter time-limiter
-  "Create a time limiter with a configurations map.
+  "Create a time limiter with a default or custom time limiter configuration.
 
    Please refer to `time-limiter-config` for allowed key value pairs
    within the time limiter configurations map."
-  [config]
-  (let [config (time-limiter-config config)]
-    (TimeLimiter/of ^TimeLimiterConfig config)))
+  ([] (TimeLimiter/ofDefaults))
+  ([config]
+   (let [config (time-limiter-config config)]
+     (TimeLimiter/of ^TimeLimiterConfig config))))
 
 (defmacro deftimelimiter
   "Define a time limiter under `name`.

@@ -78,7 +78,7 @@
     (u/lazy-seq-from-iterator iter)))
 
 (defn ^RateLimiter rate-limiter
-  "Create a rate limiter with a `name` and a rate limiter configurations map.
+  "Create a rate limiter with a `name` and a default or custom rate limiter configuration.
 
    The `name` argument is only used to register this newly created rate limiter
    to a RateLimiterRegistry. If you don't want to bind this rate limiter with
@@ -107,20 +107,21 @@
    If you only want to create a rate limiter and not register it to any
    RateLimiterRegistry, you just need to provide rate limiter configurations in `config`
    argument. The `name` argument is ignored."
-  [^String name config]
-  (let [^RateLimiterRegistry registry (:registry config)
-        config (dissoc config :registry)]
-    (cond
-      (and registry (not-empty config))
-      (let [config (rate-limiter-config config)]
-        (.rateLimiter registry name ^RateLimiterConfig config))
+  ([^String name] (RateLimiter/ofDefaults name))
+  ([^String name config]
+   (let [^RateLimiterRegistry registry (:registry config)
+         config (dissoc config :registry)]
+     (cond
+       (and registry (not-empty config))
+       (let [config (rate-limiter-config config)]
+         (.rateLimiter registry name ^RateLimiterConfig config))
 
-      registry
-      (.rateLimiter registry name)
+       registry
+       (.rateLimiter registry name)
 
-      :else
-      (let [config (rate-limiter-config config)]
-        (RateLimiter/of name ^RateLimiterConfig config)))))
+       :else
+       (let [config (rate-limiter-config config)]
+         (RateLimiter/of name ^RateLimiterConfig config))))))
 
 (defmacro defratelimiter
   "Define a rate limiter under `name` and use the same name to register
