@@ -236,13 +236,13 @@ Still take `CircuitBreaker` as an example.
    :wait-millis-in-open-state 1000})
 
 ;; set consumer for on-success event
-(set-on-success-event-consumer! testing-breaker (fn [elapsed-millis] (log/info ...)))
+(set-on-success-event-consumer! my-breaker (fn [elapsed-millis] (log/info ...)))
 
 ;; set consumer for on-error-event
-(set-on-error-event-consumer! testing-breaker (fn [throwable elapsed-millis] (log/info ...)))
+(set-on-error-event-consumer! my-breaker (fn [throwable elapsed-millis] (log/info ...)))
 
 ;; set consumer for on-state-transition-event
-(set-on-state-transition-event-consumer! testing-breaker (fn [from-state to-state] (log/info ...)))
+(set-on-state-transition-event-consumer! my-breaker (fn [from-state to-state] (log/info ...)))
 
 ;; omit other available events you can consume to
 ;; please refer to the doc or the codes to get more details
