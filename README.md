@@ -24,7 +24,7 @@ Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojur
 ;; define a breaker
 ;; when over 80% of the last 30 requests failed, the breaker will open for one second
 (breaker/defbreaker my-breaker 
-  {:failure-rate-threshold 80
+  {:failure-rate-threshold 80.0
    :ring-buffer-size-in-closed-state 30
    :wait-millis-in-open-state 1000})
 
@@ -98,7 +98,7 @@ Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojur
 
 ;; define a breaker
 (breaker/defbreaker my-breaker 
-  {:failure-rate-threshold 80
+  {:failure-rate-threshold 80.0
    :ring-buffer-size-in-closed-state 30
    :wait-millis-in-open-state 1000})
 
@@ -198,7 +198,7 @@ All of Circuit Breaker, Retry, Rate Limiter can register to their corresponding 
 
 ;; define a Circuit Breaker Registry
 (breaker/defregistry my-breaker-registry
-  {:failure-rate-threshold           80
+  {:failure-rate-threshold           80.0
    :wait-millis-in-open-state        1000
    :ring-buffer-size-in-closed-state 30})
 
@@ -231,7 +231,7 @@ Still take `CircuitBreaker` as an example.
 
 ;; define a breaker like before
 (breaker/defbreaker my-breaker 
-  {:failure-rate-threshold 80
+  {:failure-rate-threshold 80.0
    :ring-buffer-size-in-closed-state 30
    :wait-millis-in-open-state 1000})
 
