@@ -257,6 +257,9 @@ Still take `CircuitBreaker` as an example.
                        ...}]
   (set-on-all-event-consumer! my-breaker consumer-fn-map))
 ```
+# Docs
+
+For more details you can refer to documentation in [here](https://cljdoc.org/d/resilience-for-clojure/resilience-for-clojure/0.2.3/doc/readme)
 
 # License
 
