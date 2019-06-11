@@ -96,8 +96,8 @@
 ;; time limiter
 
 (s/def :timelimiter/timeout-millis int?)
-(s/def :timelimiter/cancel-running-future boolean?)
+(s/def :timelimiter/cancel-running-future? boolean?)
 
 (s/def :timelimiter/time-limiter-config
   (only-keys :opt-un [:timelimiter/timeout-millis
-                      :timelimiter/cancel-running-future]))
+                      :timelimiter/cancel-running-future?]))
