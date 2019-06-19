@@ -48,7 +48,8 @@
         (.countDown done)
         (.await barrier)
 
-        (is (= {:available-concurrent-calls (:max-concurrent-calls bulkhead-config)}
+        (is (= {:available-concurrent-calls (:max-concurrent-calls bulkhead-config)
+                :max-allowed-concurrent-calls (:max-concurrent-calls bulkhead-config)}
                (metrics testing-bulkhead)))
         (is (= @on-call-permitted-times (* 2 (:max-concurrent-calls bulkhead-config))))
         (is (= @on-call-finished-times (* 2 (:max-concurrent-calls bulkhead-config))))

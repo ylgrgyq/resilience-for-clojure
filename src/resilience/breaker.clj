@@ -127,7 +127,7 @@
    Please refer to `circuit-breaker-config` for allowed key value pairs
    within the circuit breaker configuration map."
   [config]
-  (let [c (if (instance? CircuitBreakerConfig config)
+  (let [^CircuitBreakerConfig c (if (instance? CircuitBreakerConfig config)
             config
             (circuit-breaker-config config))]
     (CircuitBreakerRegistry/of c)))

@@ -4,7 +4,8 @@
             [resilience.spec :as s])
   (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead)
            (io.github.resilience4j.bulkhead.event BulkheadEvent BulkheadEvent$Type)
-           (io.github.resilience4j.core EventConsumer)))
+           (io.github.resilience4j.core EventConsumer)
+           (java.time Duration)))
 
 (defn ^BulkheadConfig bulkhead-config
   "Create a BulkheadConfig.
@@ -34,7 +35,7 @@
         (.maxConcurrentCalls config (int max-calls)))
 
       (when-let [wait-millis (:max-wait-millis opts)]
-        (.maxWaitTime config wait-millis))
+        (.maxWaitTimeDuration config (Duration/ofMillis wait-millis)))
 
       (.build config))))
 
@@ -50,7 +51,7 @@
     (BulkheadRegistry/of c)))
 
 (defmacro defregistry
-  "Define a BulkheadRegistry under `name` with a defual or custom
+  "Define a BulkheadRegistry under `name` with a default or custom
    bulkhead configuration.
 
    Please refer to `bulkhead-config` for allowed key value pairs
@@ -171,7 +172,8 @@
   "Get the BulkheadConfig of this Bulkhead"
   [^Bulkhead bulkhead]
   (let [metric (.getMetrics bulkhead)]
-    {:available-concurrent-calls (.getAvailableConcurrentCalls metric)}))
+    {:available-concurrent-calls (.getAvailableConcurrentCalls metric)
+     :max-allowed-concurrent-calls (.getMaxAllowedConcurrentCalls metric)}))
 
 (def ^{:dynamic true
        :doc     "Contextual value represents bulkhead name"}
