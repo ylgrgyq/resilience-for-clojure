@@ -93,6 +93,19 @@
   (only-keys :opt-un [:bulkhead/max-concurrent-calls
                       :bulkhead/max-wait-millis]))
 
+;; thread pool bulkhead
+
+(s/def :thread-pool-bulkhead/max-thread-pool-size int?)
+(s/def :thread-pool-bulkhead/core-thread-pool-size int?)
+(s/def :thread-pool-bulkhead/queue-capacity int?)
+(s/def :thread-pool-bulkhead/keep-alive-time number?)
+
+(s/def :thread-pool-bulkhead/bulkhead-config
+  (only-keys :opt-un [:thread-pool-bulkhead/max-thread-pool-size
+                      :thread-pool-bulkhead/core-thread-pool-size
+                      :thread-pool-bulkhead/queue-capacity
+                      :thread-pool-bulkhead/keep-alive-time]))
+
 ;; time limiter
 
 (s/def :timelimiter/timeout-millis int?)
