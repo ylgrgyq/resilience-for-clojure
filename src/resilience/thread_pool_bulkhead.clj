@@ -22,7 +22,7 @@
 
   * :keep-alive-time
     When the number of threads is greater than
-    the core, this is the maximum time that excess idle threads
+    the core, this is the maximum time in milliseconds that excess idle threads
     will wait for new tasks before terminating.
    "
   [opts]
@@ -31,7 +31,7 @@
   (if (empty? opts)
     (ThreadPoolBulkheadConfig/ofDefaults)
     (let [^ThreadPoolBulkheadConfig$Builder config (ThreadPoolBulkheadConfig/custom)]
-      (when-let [max-thread-pool-size (:max-thread-pool-size)]
+      (when-let [max-thread-pool-size (:max-thread-pool-size opts)]
         (.maxThreadPoolSize config (int max-thread-pool-size)))
 
       (when-let [core-size (:core-thread-pool-size opts)]

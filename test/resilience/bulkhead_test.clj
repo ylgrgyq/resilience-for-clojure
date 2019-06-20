@@ -51,6 +51,7 @@
         (is (= {:available-concurrent-calls (:max-concurrent-calls bulkhead-config)
                 :max-allowed-concurrent-calls (:max-concurrent-calls bulkhead-config)}
                (metrics testing-bulkhead)))
+        ;; we registered every kind of events twice, so statistic should be double
         (is (= @on-call-permitted-times (* 2 (:max-concurrent-calls bulkhead-config))))
         (is (= @on-call-finished-times (* 2 (:max-concurrent-calls bulkhead-config))))
         (is (= @on-call-rejected-times 2))))))

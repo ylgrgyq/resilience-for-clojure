@@ -1,7 +1,7 @@
 (ns resilience.core
   (:import (io.github.resilience4j.circuitbreaker CircuitBreaker)
            (io.github.resilience4j.retry Retry)
-           (io.github.resilience4j.bulkhead Bulkhead)
+           (io.github.resilience4j.bulkhead Bulkhead ThreadPoolBulkhead)
            (io.github.resilience4j.ratelimiter RateLimiter)
            (io.github.resilience4j.timelimiter TimeLimiter)
            (java.util.function Supplier)))
@@ -70,6 +70,26 @@
    Usually this is used within `resilience.core/execute` block."
   [^Bulkhead bulkhead f]
   (Bulkhead/decorateCallable bulkhead f))
+
+;; thread pool bulkhead
+
+(defmacro execute-with-thread-pool-bulkhead
+  "Execute the following codes with the protection
+   of a thread pool bulkhead given by `bulkhead` argument.
+
+   Please try to not put `clojure.core/recur` in `body`
+   otherwise you may get an infinite loop easily."
+  [^ThreadPoolBulkhead bulkhead & body]
+  (let [bulkhead (vary-meta bulkhead assoc :tag `ThreadPoolBulkhead)
+        f (with-meta `(to-fn ~@body) {:tag `Callable})]
+    `(.executeCallable ~bulkhead ~f)))
+
+(defn with-thread-pool-bulkhead
+  "Provide a function `f` which has no arguments and returns a function
+   which is decorated by a thread pool bulkhead given by `bulkhead` argument.
+   Usually this is used within `resilience.core/execute` block."
+  [^ThreadPoolBulkhead bulkhead f]
+  (ThreadPoolBulkhead/decorateCallable bulkhead f))
 
 ;; rate limiter
 

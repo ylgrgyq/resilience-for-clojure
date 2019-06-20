@@ -63,6 +63,7 @@
       (Thread/sleep 300)
       (is (= {:number-of-waiting-threads 0, :available-permissions 1}
              (metrics testing-rate-limiter)))
+      ;; we registered every kind of events twice, so statistic should be double
       (is (= @on-successfule-acquire-times (* 2 (inc @c))))))
 
   (testing "failed to acquire permission"
