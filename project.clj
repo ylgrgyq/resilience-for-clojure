@@ -8,7 +8,8 @@
                  [io.github.resilience4j/resilience4j-ratelimiter "0.16.0"]
                  [io.github.resilience4j/resilience4j-retry "0.16.0"]
                  [io.github.resilience4j/resilience4j-bulkhead "0.16.0"]
-                 [io.github.resilience4j/resilience4j-timelimiter "0.16.0"]]
+                 [io.github.resilience4j/resilience4j-timelimiter "0.16.0"]
+                 [io.github.resilience4j/resilience4j-circularbuffer "0.16.0"]]
   :plugins [[lein-codox "0.9.5"]]
   :codox {:output-path "target/codox"
           :source-uri "https://github.com/ylgrgyq/resilience-for-clojure/blob/master/{filepath}#L{line}"
