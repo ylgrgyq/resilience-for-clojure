@@ -57,7 +57,7 @@
 
     (testing "breaker from HALF_OPEN to OPEN"
       ;; wait circuit transfer to half open
-      (Thread/sleep (:wait-millis-in-open-state breaker-basic-config))
+      (Thread/sleep (+ 500 (:wait-millis-in-open-state breaker-basic-config)))
       ;; will keep in OPEN state if we set :automatic-transfer-from-open-to-half-open? to false
       (is (= :HALF_OPEN (state testing-breaker)))
 
