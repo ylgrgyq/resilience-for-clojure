@@ -1,4 +1,4 @@
-(ns resilience.circuit-buffer
+(ns resilience.circular-fifo-buffer
   (:refer-clojure :exclude [take empty?])
   (:import (io.github.resilience4j.circularbuffer CircularFifoBuffer ConcurrentCircularFifoBuffer)
            (io.vavr.control Option)))
