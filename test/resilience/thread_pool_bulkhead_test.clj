@@ -19,8 +19,9 @@
             wait-in-queue-job-latch    (CountDownLatch. (:queue-capacity bulkhead-config))
             exceeding-pool-run-barrier (CountDownLatch. exceeding-pool-size)
             done                       (CountDownLatch. 1)
-            on-call-finished-times     (atom 0)
-            on-call-finished-fn        (fn [] (swap! on-call-finished-times inc))
+            call-finish-times-latch    (CountDownLatch. (* 2 (+ (:queue-capacity bulkhead-config)
+                                                               (:max-thread-pool-size bulkhead-config))))
+            on-call-finished-fn        (fn [] (.countDown call-finish-times-latch))
             on-call-permitted-times    (atom 0)
             on-call-permitted-fn       (fn [] (swap! on-call-permitted-times inc))
             on-call-rejected-times     (atom 0)
@@ -80,10 +81,9 @@
                 :thread-pool-size         (:max-thread-pool-size bulkhead-config)}
                (metrics testing-bulkhead)))
         ;; we registered every kind of events twice, so statistic should be double
+        (.await call-finish-times-latch)
         (is (= @on-call-permitted-times (* 2 (+ (:queue-capacity bulkhead-config)
                                                 (:max-thread-pool-size bulkhead-config)))))
-        (is (= @on-call-finished-times (* 2 (+ (:queue-capacity bulkhead-config)
-                                               (:max-thread-pool-size bulkhead-config)))))
         (is (= @on-call-rejected-times 2))))))
 
 (deftest test-registry
