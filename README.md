@@ -69,6 +69,8 @@ Further more, it has [examples](https://github.com/ylgrgyq/resilience-for-clojur
   (do-another-thing))
 ```
 
+And there's a thread pool version bulkhead. Please refer to know how to use it. It's similar to the normal version bulkhead example above.
+
 ### Rate Limiter
 ```clojure
 (require '[resilience.ratelimiter :as ratelimiter]
