@@ -142,7 +142,8 @@ Please note that the second parameter passed to `with-resilience-family` is a li
 
 What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle these exceptions respectively which force you to add `try` block with many `catch` to protect your codes and react to different exceptions with different behavior. Finally, they will make your codes not as concise as above examples. After adding exceptions handling stuff, the example before may looks like this:
 
-```clojure (try
+```clojure 
+(try
   (resilience/with-resilience-family
     [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
     (do-something)
