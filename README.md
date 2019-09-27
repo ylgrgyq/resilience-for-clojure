@@ -267,4 +267,4 @@ For more details you can refer to documentation in [here](https://cljdoc.org/d/r
 
 # License
 
-Copyright 2018 Rui Guo. Released under the [Apache 2.0 license](http://www.apache.org/licenses/LICENSE-2.0.html).
+Copyright 2019 Rui Guo. Released under the [Apache 2.0 license](http://www.apache.org/licenses/LICENSE-2.0.html).
