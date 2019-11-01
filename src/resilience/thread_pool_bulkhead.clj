@@ -5,7 +5,9 @@
   (:import (io.github.resilience4j.bulkhead ThreadPoolBulkheadConfig ThreadPoolBulkheadConfig$Builder
                                             ThreadPoolBulkheadRegistry ThreadPoolBulkhead)
            (io.github.resilience4j.bulkhead.event BulkheadEvent BulkheadEvent$Type)
-           (io.github.resilience4j.core EventConsumer)))
+           (io.github.resilience4j.core EventConsumer)
+           (java.util.concurrent CompletionStage)
+           (java.time Duration)))
 
 (defn ^ThreadPoolBulkheadConfig thread-pool-bulkhead-config
   "Create a ThreadPoolBulkheadConfig.
@@ -20,10 +22,15 @@
   * :queue-capacity
     Configures the capacity of the queue.
 
-  * :keep-alive-time
+  * :keep-alive-millis
     When the number of threads is greater than
     the core, this is the maximum time in milliseconds that excess idle threads
     will wait for new tasks before terminating.
+
+  * :writable-stack-trace-enabled
+    Enables writable stack traces. When set to false, Exception#getStackTrace() returns a zero length array.
+    This may be used to reduce log spam when the circuit breaker is open as the cause of the exceptions is already
+    known (the circuit breaker is short-circuiting calls).
    "
   [opts]
   (s/verify-opt-map-keys-with-spec :thread-pool-bulkhead/bulkhead-config opts)
@@ -40,8 +47,11 @@
       (when-let [queue-capacity (:queue-capacity opts)]
         (.queueCapacity config (int queue-capacity)))
 
-      (when-let [keep-alive (:keep-alive-time opts)]
-        (.keepAliveTime config (long keep-alive)))
+      (when-let [keep-alive (:keep-alive-millis opts)]
+        (.keepAliveDuration config (Duration/ofMillis keep-alive)))
+
+      (when-let [stack-trace-enabled (:writable-stack-trace-enabled opts)]
+        (.writableStackTraceEnabled config stack-trace-enabled))
 
       (.build config))))
 
@@ -168,6 +178,17 @@
   "Get the Metrics of this Bulkhead"
   [^ThreadPoolBulkhead bulkhead]
   (.getBulkheadConfig bulkhead))
+
+(defn ^CompletionStage submit-callable
+  "Submits a value-returning task for execution and returns a Future representing the pending
+   results of the task."
+  [^ThreadPoolBulkhead bulkhead ^Callable callable]
+  (.submit bulkhead callable))
+
+(defn submit-runnable
+  "Submits a task for execution."
+  [^ThreadPoolBulkhead bulkhead ^Runnable runnable]
+  (.submit bulkhead runnable))
 
 (defn metrics
   "Get the ThreadPoolBulkheadConfig of this Bulkhead"

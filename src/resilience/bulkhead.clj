@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [name])
   (:require [resilience.util :as u]
             [resilience.spec :as s])
-  (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead)
+  (:import (io.github.resilience4j.bulkhead BulkheadConfig BulkheadConfig$Builder BulkheadRegistry Bulkhead Bulkhead$EventPublisher Bulkhead$Metrics)
            (io.github.resilience4j.bulkhead.event BulkheadEvent BulkheadEvent$Type)
            (io.github.resilience4j.core EventConsumer)
            (java.time Duration)))
@@ -20,6 +20,11 @@
     guaranteed and immediate. If bulkhead is full, calling threads will
     contest for space, if it becomes available. :max-wait-millis can be set to 0.
 
+  * :writable-stack-trace-enabled
+    Enables writable stack traces. When set to false, Exception#getStackTrace() returns a zero length array.
+    This may be used to reduce log spam when the circuit breaker is open as the cause of the exceptions is already
+    known (the circuit breaker is short-circuiting calls).
+
     Note: for threads running on an event-loop or equivalent (rx computation
     pool, etc), setting :max-wait-time to 0 is highly recommended. Blocking an
     event-loop thread will most likely have a negative effect on application
@@ -35,7 +40,10 @@
         (.maxConcurrentCalls config (int max-calls)))
 
       (when-let [wait-millis (:max-wait-millis opts)]
-        (.maxWaitTimeDuration config (Duration/ofMillis wait-millis)))
+        (.maxWaitDuration config (Duration/ofMillis wait-millis)))
+
+      (when-let [stack-trace-enabled (:writable-stack-trace-enabled opts)]
+        (.writableStackTraceEnabled config stack-trace-enabled))
 
       (.build config))))
 
@@ -153,6 +161,33 @@
          ^String name-in-string (str *ns* "/" name)]
      `(def ~sym (bulkhead ~name-in-string ~config)))))
 
+(defn change-config!
+  "Dynamic bulkhead configuration change. NOTE! New `:max-wait-millis` config won't affect threads
+   that are currently waiting for permission."
+  [^Bulkhead bulkhead ^BulkheadConfig config]
+  (.changeConfig bulkhead config))
+
+(defn try-acquire-permission
+  "Acquires a permission to execute a call, only if one is available at the time of invocation.
+   If the current thread is interrupted while waiting for a permit then it won't throw
+   InterruptedException, but its interrupt status will be set."
+  [^Bulkhead bulkhead]
+  (.tryAcquirePermission bulkhead))
+
+(defn acquire-permission
+  "Acquires a permission to execute a call, only if one is available at the time of invocation
+   If the current thread is interrupted while waiting for a permit
+   then it won't throw InterruptedException, but its interrupt status will be set."
+  [^Bulkhead bulkhead]
+  (.acquirePermission bulkhead))
+
+(defn release-permission
+  "Releases a permission and increases the number of available permits by one.
+   Should only be used when a permission was acquired but not used. Otherwise use
+   on-complete(bulkhead) to signal a completed call and release a permission."
+  [^Bulkhead bulkhead]
+  (.releasePermission bulkhead))
+
 (defn on-complete
   "Records a completed call."
   [^Bulkhead bulkhead]
@@ -171,7 +206,7 @@
 (defn metrics
   "Get the BulkheadConfig of this Bulkhead"
   [^Bulkhead bulkhead]
-  (let [metric (.getMetrics bulkhead)]
+  (let [^Bulkhead$Metrics metric (.getMetrics bulkhead)]
     {:available-concurrent-calls (.getAvailableConcurrentCalls metric)
      :max-allowed-concurrent-calls (.getMaxAllowedConcurrentCalls metric)}))
 
@@ -202,7 +237,7 @@
 
    Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
    consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
-  (let [pub (.getEventPublisher bulkhead)]
+  (let [^Bulkhead$EventPublisher pub (.getEventPublisher bulkhead)]
     (.onCallRejected pub (create-consumer consumer-fn))))
 
 (defn set-on-call-permitted-event-consumer!
@@ -212,7 +247,7 @@
    Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
    consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
   [^Bulkhead bulkhead consumer-fn]
-  (let [pub (.getEventPublisher bulkhead)]
+  (let [^Bulkhead$EventPublisher pub (.getEventPublisher bulkhead)]
     (.onCallPermitted pub (create-consumer consumer-fn))))
 
 (defn set-on-call-finished-event-consumer!
@@ -222,7 +257,7 @@
 
    Please note that in `consumer-fn` you can get the bulkhead name and the creation time of the
    consumed event by accessing `*bulkhead-name*` and `*creation-time*` under this namespace."
-  (let [pub (.getEventPublisher bulkhead)]
+  (let [^Bulkhead$EventPublisher pub (.getEventPublisher bulkhead)]
     (.onCallFinished pub (create-consumer consumer-fn))))
 
 (defn set-on-all-event-consumer!

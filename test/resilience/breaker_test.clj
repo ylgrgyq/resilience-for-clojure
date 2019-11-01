@@ -3,7 +3,7 @@
   (:require [clojure.test :refer :all]
             [resilience.breaker :refer :all]
             [resilience.core :as resilience])
-  (:import (io.github.resilience4j.circuitbreaker CircuitBreakerOpenException)
+  (:import (io.github.resilience4j.circuitbreaker CallNotPermittedException)
            (clojure.lang ExceptionInfo)))
 
 (defn- fail [& _]
@@ -28,7 +28,7 @@
       (catch ExceptionInfo ex
         (is (:expected (ex-data ex))))))
   (is (= :OPEN (state breaker)))
-  (is (thrown? CircuitBreakerOpenException (resilience/execute-with-breaker breaker (fail)))))
+  (is (thrown? CallNotPermittedException (resilience/execute-with-breaker breaker (fail)))))
 
 (deftest test-breaker
   (let [breaker-basic-config {:failure-rate-threshold                     50.0
@@ -47,12 +47,15 @@
                         (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
                                           (:failure-rate-threshold breaker-basic-config)))
 
-      (is (= {:failure-rate                  (:failure-rate-threshold breaker-basic-config)
-              :number-of-buffered-calls      (:ring-buffer-size-in-closed-state breaker-basic-config)
-              :number-of-failed-calls        (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)
-              :number-of-not-permitted-calls 1,
-              :max-number-of-buffered-calls  (:ring-buffer-size-in-closed-state breaker-basic-config)
-              :number-of-successful-calls    (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)}
+      (is (= {:failure-rate                    (:failure-rate-threshold breaker-basic-config)
+              :number-of-buffered-calls        (:ring-buffer-size-in-closed-state breaker-basic-config)
+              :number-of-failed-calls          (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)
+              :number-of-not-permitted-calls   1
+              :number-of-slow-calls            0
+              :number-of-slow-failed-calls     0
+              :number-of-slow-successful-calls 0
+              :number-of-successful-calls      (/ (:ring-buffer-size-in-closed-state breaker-basic-config) 2)
+              :slow-call-rate                  0.0}
              (metrics testing-breaker))))
 
     (testing "breaker from HALF_OPEN to OPEN"

@@ -8,7 +8,8 @@
 
 (deftest test-bulkhead
   (let [bulkhead-config {:max-concurrent-calls 5
-                         :max-wait-millis      200}]
+                         :max-wait-millis      200
+                         :writable-stack-trace-enabled false}]
     (defbulkhead testing-bulkhead bulkhead-config)
     (testing "bulkhead wait timeout"
       (let [barrier (CyclicBarrier. (inc (:max-concurrent-calls bulkhead-config)))
@@ -54,6 +55,38 @@
         ;; we registered every kind of events twice, so statistic should be double
         (is (= @on-call-permitted-times (* 2 (:max-concurrent-calls bulkhead-config))))
         (is (= @on-call-finished-times (* 2 (:max-concurrent-calls bulkhead-config))))
+        (is (= @on-call-rejected-times 2))))
+    (testing "bulkhead acquire and release permission"
+      (let [on-call-finished-times (atom 0)
+            on-call-finished-fn (fn [] (swap! on-call-finished-times inc))
+            on-call-permitted-times (atom 0)
+            on-call-permitted-fn (fn [] (swap! on-call-permitted-times inc))
+            on-call-rejected-times (atom 0)
+            on-call-rejected-fn (fn [] (swap! on-call-rejected-times inc))]
+
+        (set-on-call-finished-event-consumer! testing-bulkhead on-call-finished-fn)
+        (set-on-call-permitted-event-consumer! testing-bulkhead on-call-permitted-fn)
+        (set-on-call-rejected-event-consumer! testing-bulkhead on-call-rejected-fn)
+
+        (set-on-all-event-consumer! testing-bulkhead
+                                    {:on-call-finished on-call-finished-fn
+                                     :on-call-permitted on-call-permitted-fn
+                                     :on-call-rejected on-call-rejected-fn})
+
+        (doseq [_ (range (:max-concurrent-calls bulkhead-config))]
+          (acquire-permission testing-bulkhead))
+        (is (= {:available-concurrent-calls 0
+                :max-allowed-concurrent-calls (:max-concurrent-calls bulkhead-config)}
+               (metrics testing-bulkhead)))
+        (is (false? (try-acquire-permission testing-bulkhead)))
+        (doseq [_ (range (:max-concurrent-calls bulkhead-config))]
+          (release-permission testing-bulkhead))
+        (is (= {:available-concurrent-calls (:max-concurrent-calls bulkhead-config)
+                :max-allowed-concurrent-calls (:max-concurrent-calls bulkhead-config)}
+               (metrics testing-bulkhead)))
+        ;; we registered every kind of events twice, so statistic should be double
+        (is (= @on-call-permitted-times (* 2 (:max-concurrent-calls bulkhead-config))))
+        (is (= @on-call-finished-times 0))
         (is (= @on-call-rejected-times 2))))))
 
 (deftest test-registry

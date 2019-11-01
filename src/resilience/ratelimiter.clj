@@ -12,6 +12,12 @@
   "Create a RateLimiterConfig.
 
   Allowed options are:
+  * :writable-stack-trace-enabled
+    Enables writable stack traces. When set to false, Exception#getStackTrace()
+    returns a zero length array. This may be used to reduce log spam when the circuit breaker
+    is open as the cause of the exceptions is already known (the circuit breaker is
+    short-circuiting calls).
+
   * :timeout-millis
     Configures the default wait for permission duration.
     Default value is 5000 milliseconds.
@@ -33,6 +39,9 @@
   (if (empty? opts)
     (RateLimiterConfig/ofDefaults)
     (let [^RateLimiterConfig$Builder config (RateLimiterConfig/custom)]
+      (when-let [stack-trace-enabled (:writable-stack-trace-enabled opts)]
+        (.writableStackTraceEnabled config stack-trace-enabled))
+
       (when-let [timeout (:timeout-millis opts)]
         (.timeoutDuration config (Duration/ofMillis timeout)))
 
@@ -182,15 +191,37 @@
   [^RateLimiter limiter limit]
   (.changeLimitForPeriod limiter (int limit)))
 
-(defn acquire-permission!
-  "Acquires a permission from this rate limiter, blocking until one is available."
-  [^RateLimiter limiter timeout-millis]
-  (.getPermission limiter (Duration/ofMillis timeout-millis)))
+(defn acquire-permission
+  "Acquires one or the given number of permissions from this rate limiter, blocking until all the
+   required permissions are available, or the thread is interrupted. Maximum wait time is set
+   by `:timeout-millis` in `rate-limiter-config`.
 
-(defn reserve-permission! [^RateLimiter limiter timeout-millis]
-  "Reserves a permission from this rate limiter and returns nanoseconds you should wait for it.
-  If returned long is negative, it means that you failed to reserve permission,"
-  (.reservePermission limiter (Duration/ofMillis timeout-millis)))
+   If the current thread is interrupted while waiting for a permit then it won't throw
+   `InterruptedException`, but its interrupt status will be set.
+
+   Returns true if a permit was acquired and false if waiting `:timeout-millis`
+   elapsed before a permit was acquired"
+  ([^RateLimiter limiter]
+   (.acquirePermission limiter))
+  ([^RateLimiter limiter permits]
+   (.acquirePermission limiter permits)))
+
+(defn reserve-permission
+  "Reserves one or the given number permits from this rate limiter and returns nanoseconds you should
+   wait for it. If returned long is negative, it means that you failed to reserve permission,
+   possibly your `:timeout-millis` in `rate-limiter-config` is less then time to wait for
+   permission."
+  ([^RateLimiter limiter]
+   (.reservePermission limiter))
+  ([^RateLimiter limiter permits]
+   (.reservePermission limiter permits)))
+
+(defn wait-for-permission
+  "Will wait for one or required number of permits within default timeout duration."
+  ([^RateLimiter limiter]
+   (RateLimiter/waitForPermission limiter))
+  ([^RateLimiter limiter permits]
+   (RateLimiter/waitForPermission limiter permits)))
 
 (defn metrics
   "Get the Metrics of this RateLimiter."

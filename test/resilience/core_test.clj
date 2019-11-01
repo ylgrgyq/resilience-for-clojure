@@ -4,7 +4,7 @@
             [resilience.retry :as retry]
             [resilience.bulkhead :as bulkhead]
             [resilience.core :refer :all])
-  (:import (io.github.resilience4j.circuitbreaker CircuitBreakerOpenException)
+  (:import (io.github.resilience4j.circuitbreaker CallNotPermittedException)
            (clojure.lang ExceptionInfo)))
 
 (defn- fail [& _]
@@ -48,7 +48,7 @@
                  (testing-fn)
                  (with-retry testing-retry)
                  (with-breaker testing-breaker)
-                 (recover-from CircuitBreakerOpenException
+                 (recover-from CallNotPermittedException
                                (fn [_] :breaker-open))
                  (recover-from ExceptionInfo (fn [_] :expected-exception)))
                :breaker-open))
@@ -67,13 +67,13 @@
                            (do (vswap! retry-times inc) (fail))
                            (with-retry testing-retry)
                            (with-breaker testing-breaker)
-                           (recover-from [CircuitBreakerOpenException ExceptionInfo]
+                           (recover-from [CallNotPermittedException ExceptionInfo]
                                          (fn [ex]
                                            (cond
                                              (instance? ExceptionInfo ex)
                                              :expected-exception
 
-                                             (instance? CircuitBreakerOpenException ex)
+                                             (instance? CallNotPermittedException ex)
                                              :breaker-open)))))]
         (breaker/reset! testing-breaker)
         (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
@@ -117,7 +117,7 @@
                  (with-resilience-family
                    [:retry testing-retry :breaker testing-breaker :bulkhead testing-bulkhead]
                    (testing-fn))
-                 (catch CircuitBreakerOpenException _
+                 (catch CallNotPermittedException _
                    :breaker-open))
                :breaker-open))
 

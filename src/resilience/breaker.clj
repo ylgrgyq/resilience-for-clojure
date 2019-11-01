@@ -1,16 +1,18 @@
 (ns resilience.breaker
-  (:refer-clojure :exclude [name reset!])
-  (:require [resilience.util :as u]
+    (:refer-clojure :exclude [name reset!])
+    (:require [resilience.util :as u]
             [resilience.spec :as s])
-  (:import (io.github.resilience4j.circuitbreaker CircuitBreakerConfig CircuitBreakerConfig$Builder
-                                                  CircuitBreakerRegistry CircuitBreaker CircuitBreaker$StateTransition)
-           (java.time Duration)
-           (java.util.function Predicate)
-           (io.github.resilience4j.core EventConsumer)
-           (io.github.resilience4j.circuitbreaker.event CircuitBreakerOnSuccessEvent CircuitBreakerOnErrorEvent
-                                                        CircuitBreakerOnIgnoredErrorEvent
-                                                        CircuitBreakerOnStateTransitionEvent
-                                                        CircuitBreakerEvent CircuitBreakerEvent$Type)))
+    (:import (io.github.resilience4j.circuitbreaker CircuitBreakerConfig CircuitBreakerConfig$Builder
+               CircuitBreakerRegistry CircuitBreaker CircuitBreaker$StateTransition CircuitBreaker$Metrics CircuitBreakerConfig$SlidingWindowType)
+      (java.time Duration)
+      (java.util.function Predicate)
+             (io.github.resilience4j.core EventConsumer)
+      (io.github.resilience4j.circuitbreaker.event CircuitBreakerOnSuccessEvent CircuitBreakerOnErrorEvent
+                                                   CircuitBreakerOnIgnoredErrorEvent
+                                                   CircuitBreakerOnStateTransitionEvent
+                                                   CircuitBreakerEvent CircuitBreakerEvent$Type) (java.util.concurrent TimeUnit)))
+
+
 
 (defn ^CircuitBreakerConfig circuit-breaker-config
   "Create a CircuitBreakerConfig.
@@ -22,11 +24,41 @@
     short-circuiting calls.
     Must be a float/double. Default value is 50%.
 
+  * :slow-call-rate-threshold
+    Configures a threshold in percentage. The CircuitBreaker considers a call
+    as slow when the call duration is greater than :slow-call-duration-threshold.
+    When the percentage of slow calls is equal or greater the threshold, the
+    CircuitBreaker transitions to open and starts short-circuiting calls.
+    The threshold must be greater than 0 and not greater than 100.
+    Default value is 100 percentage which means that all recorded calls must be
+    slower than :slow-call-duration-threshold.
+
+  * :writable-stack-trace-enabled
+    Enables writable stack traces. When set to false, Exception#getStackTrace()
+    returns a zero length array.
+    This may be used to reduce log spam when the circuit breaker is open as the
+    cause of the exceptions is already known (the circuit breaker is short-circuiting calls).
+
   * :wait-millis-in-open-state
     Configures the wait duration which specifies how long the
     circuit breaker should stay open, before it switches to half
     open.
     Default value is 60 seconds.
+
+  * :wait-interval-function-in-open-state
+    Configures an interval function which controls how long the CircuitBreaker should stay
+    open, before it switches to half open. The default interval function returns a fixed wait
+    duration of 60 seconds.
+    A custom interval function is useful if you need an exponential backoff algorithm.
+
+  * :slow-call-threshold-in-millis
+    Configures the duration threshold in millis seconds above which calls are considered as slow and
+    increase the slow calls percentage.
+    Default value is 60 seconds.
+
+  * :permitted-number-of-calls-in-half-open-state
+    Configures the number of permitted calls when the CircuitBreaker is half open.
+    The size must be greater than 0. Default size is 10.
 
   * :ring-buffer-size-in-half-open-state
     Configures the size of the ring buffer when the circuit breaker
@@ -48,12 +80,63 @@
     open even if all 99 calls have failed.
     The default size is 100.
 
+  * :sliding-window-size
+    Configures the size of the sliding window which is used to record the outcome
+    of calls when the CircuitBreaker is closed.
+    :sliding-window-size configures the size of the sliding window. Sliding window
+     can either be count-based or time-based.
+    If :sliding-window-size is :COUNT_BASED, the last :sliding-window-size calls are
+    recorded and aggregated.
+    If :sliding-window-size is :TIME_BASED, the calls of the last :sliding-window-size
+    seconds are recorded and aggregated.
+    The :sliding-window-size must be greater than 0.
+    The :minimum-number-of-calls must be greater than 0.
+    If the slidingWindowType is :COUNT_BASED, the :minimum-number-of-calls cannot be
+    greater than :sliding-window-size.
+    If the slidingWindowType is :TIME_BASED, you can pick whatever you want.
+    Default slidingWindowSize is 100.
+
+  * :minimum-number-of-calls
+    Configures configures the minimum number of calls which are required
+    (per sliding window period) before the CircuitBreaker can calculate the error rate.
+    For example, if :minimum-number-of-calls is 10, then at least 10 calls must be
+    recorded, before the failure rate can be calculated.
+    If only 9 calls have been recorded the circuit breaker will not transition to open
+    even if all 9 calls have failed.
+    Default minimumNumberOfCalls is 100.
+
+  * :sliding-window-type
+    Configures the type of the sliding window which is used to record the outcome of
+    calls when the circuit breaker is closed.
+    Sliding window can either be count-based or time-based.
+    If :sliding-window-type is :COUNT_BASED, the last :sliding-window-size calls are
+    recorded and aggregated.
+    If :sliding-window-type is :TIME_BASED, the calls of the last :sliding-window-size
+    seconds are recorded and aggregated.
+    Default slidingWindowType is :COUNT_BASED.
+
   * :record-failure
     Configures a function which take a `throwable` as argument and
     evaluates if an exception should be recorded as a failure and thus
     increase the failure rate.
     The predicate function must return true if the exception should
     count as a failure, otherwise it must return false.
+
+  * :record-exception
+    Configures a function which take a `throwable` as argument and
+    evaluates if an exception should be recorded as a failure
+    and thus increase the failure rate.
+    The predicate function must return true if the exception should
+    count as a failure. The predicate function must return false, if the exception
+    should count as a success, unless the exception is explicitly ignored by
+    :ignore-exceptions or :ignore-exception configurations.
+
+  * :ignore-exception
+    Configures a function which take a `throwable` as argument and
+    evaluates if an exception should be ignored and neither count as a
+    failure nor success.
+    The predicate function must return true if the exception should be ignored .
+    The predicate function must return false, if the exception should count as a failure.
 
   * :record-exceptions
     Configures a list of error classes that are recorded as a failure
@@ -87,7 +170,7 @@
      :record-failure option.
 
   * :automatic-transfer-from-open-to-half-open?
-    Enables automatic transition from :OPEN to :HALF_OPEN state once
+    true to enable automatic transition from :OPEN to :HALF_OPEN state once
     the :wait-millis-in-open-state has passed.
    "
   [opts]
@@ -98,25 +181,47 @@
     (let [^CircuitBreakerConfig$Builder config (CircuitBreakerConfig/custom)]
       (when-let [failure-threshold (:failure-rate-threshold opts)]
         (.failureRateThreshold config (float failure-threshold)))
+      (when-let [threshold (:slow-call-rate-threshold opts)]
+        (.slowCallRateThreshold config (float threshold)))
+      (when-let [stack-trace-enabled (:writable-stack-trace-enabled opts)]
+        (.writableStackTraceEnabled config stack-trace-enabled))
       (when-let [duration (:wait-millis-in-open-state opts)]
         (.waitDurationInOpenState config (Duration/ofMillis duration)))
+      (when-let [interval-fn (:wait-interval-function-in-open-state opts)]
+        (.waitIntervalFunctionInOpenState config interval-fn))
+      (when-let [duration (:slow-call-threshold-in-millis opts)]
+        (.slowCallDurationThreshold config (Duration/ofMillis duration)))
+      (when-let [calls (:permitted-number-of-calls-in-half-open-state opts)]
+        (.permittedNumberOfCallsInHalfOpenState config calls))
       (when-let [size (:ring-buffer-size-in-half-open-state opts)]
         (.ringBufferSizeInHalfOpenState config size))
       (when-let [size (:ring-buffer-size-in-closed-state opts)]
         (.ringBufferSizeInClosedState config size))
-
+      (when-let [size (:sliding-window-size opts)]
+        (.slidingWindowSize config size))
+      (when-let [calls (:minimum-number-of-calls opts)]
+        (.minimumNumberOfCalls config calls))
+      (when-let [type (:sliding-window-type opts)]
+        (if (keyword? type)
+          (.slidingWindowType config (u/keyword->enum CircuitBreakerConfig$SlidingWindowType type))
+          (.slidingWindowType config type)))
       (when-let [record-failure (:record-failure opts)]
         (.recordFailure config (reify Predicate
                                  (test [_ v] (record-failure v)))))
-
+      (when-let [record-exception (:record-exception opts)]
+        (.recordException config (reify Predicate
+                                   (test [_ v] (record-exception v)))))
+      (when-let [ignore-exception (:ignore-exception opts)]
+        (.ignoreException config (reify Predicate
+                                   (test [_ v] (ignore-exception v)))))
       (when-let [exceptions (:record-exceptions opts)]
         (.recordExceptions config (into-array Class exceptions)))
 
       (when-let [exceptions (:ignore-exceptions opts)]
         (.ignoreExceptions config (into-array Class exceptions)))
 
-      (when (:automatic-transfer-from-open-to-half-open? opts)
-        (.enableAutomaticTransitionFromOpenToHalfOpen config))
+      (when-let [enabled? (:automatic-transfer-from-open-to-half-open? opts)]
+        (.automaticTransitionFromOpenToHalfOpenEnabled config enabled?))
 
       (.build config))))
 
@@ -128,8 +233,8 @@
    within the circuit breaker configuration map."
   [config]
   (let [^CircuitBreakerConfig c (if (instance? CircuitBreakerConfig config)
-            config
-            (circuit-breaker-config config))]
+                                  config
+                                  (circuit-breaker-config config))]
     (CircuitBreakerRegistry/of c)))
 
 (defmacro defregistry
@@ -243,13 +348,13 @@
 (defn on-success
   "Records a successful call."
   [^CircuitBreaker breaker duration-in-nanos]
-  (.onSuccess breaker duration-in-nanos))
+  (.onSuccess breaker duration-in-nanos TimeUnit/NANOSECONDS))
 
 (defn on-error
   "Records a failed call.
    This method must be invoked when a call failed."
   [^CircuitBreaker breaker duration-in-nanos throwable]
-  (.onError breaker duration-in-nanos throwable))
+  (.onError breaker duration-in-nanos TimeUnit/NANOSECONDS throwable))
 
 (defn ^String name
   "Get the name of this CircuitBreaker"
@@ -324,12 +429,15 @@
 (defn metrics
   "Get the Metrics of this CircuitBreaker"
   [^CircuitBreaker breaker]
-  (let [metric (.getMetrics breaker)]
+  (let [^CircuitBreaker$Metrics metric (.getMetrics breaker)]
     {:failure-rate (.getFailureRate metric)
+     :slow-call-rate (.getSlowCallRate metric)
+     :number-of-slow-calls (.getNumberOfSlowCalls metric)
+     :number-of-slow-successful-calls (.getNumberOfSlowSuccessfulCalls metric)
+     :number-of-slow-failed-calls (.getNumberOfSlowFailedCalls metric)
      :number-of-buffered-calls (.getNumberOfBufferedCalls metric)
      :number-of-failed-calls (.getNumberOfFailedCalls metric)
      :number-of-not-permitted-calls (.getNumberOfNotPermittedCalls metric)
-     :max-number-of-buffered-calls (.getMaxNumberOfBufferedCalls metric)
      :number-of-successful-calls (.getNumberOfSuccessfulCalls metric)}))
 
 (def ^{:dynamic true
@@ -384,6 +492,18 @@
   [consumer-fn-map event]
   (with-context event
     (when-let [consumer-fn (get consumer-fn-map :on-call-not-permitted)]
+      (consumer-fn))))
+
+(defmethod on-event CircuitBreakerEvent$Type/DISABLED
+  [consumer-fn-map event]
+  (with-context event
+    (when-let [consumer-fn (get consumer-fn-map :on-disabled)]
+      (consumer-fn))))
+
+(defmethod on-event CircuitBreakerEvent$Type/FORCED_OPEN
+  [consumer-fn-map event]
+  (with-context event
+    (when-let [consumer-fn (get consumer-fn-map :on-force-open)]
       (consumer-fn))))
 
 (defn- create-consumer

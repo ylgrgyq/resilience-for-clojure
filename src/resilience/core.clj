@@ -111,28 +111,6 @@
   [^RateLimiter rate-limiter f]
   (RateLimiter/decorateCallable rate-limiter f))
 
-;; time limiter
-
-(defmacro execute-with-time-limiter
-  "Execute the following codes with the protection
-   of a time limiter given by `time-limiter` argument.
-
-   Please try to not put `clojure.core/recur` in `body`
-   otherwise you may get an infinite loop easily."
-  [^TimeLimiter timelimiter & body]
-  (let [timelimiter (vary-meta timelimiter assoc :tag `TimeLimiter)]
-    `(.executeFutureSupplier ~timelimiter (reify Supplier
-                                            (get [_] (do ~@body))))))
-
-(defn with-time-limiter
-  "Provide a function `f` which has no arguments and returns a function
-   which is decorated by a time limiter given by `time-limiter` argument.
-   Usually this is used within `resilience.core/execute` block."
-  [^TimeLimiter time-limiter f]
-  (TimeLimiter/decorateFutureSupplier time-limiter
-                                      (reify Supplier
-                                        (get [_] (f)))))
-
 ;; gather together
 
 (defmacro execute-callable*
@@ -149,7 +127,7 @@
            (save data))
          (with-breaker breaker)
          (with-retry retry-policy)
-         (recover-from [CircuitBreakerOpenException ExceptionInfo]
+         (recover-from [CallNotPermittedException ExceptionInfo]
                        (fn [_] (log/error \"circuit breaker open\")))
          (recover (fn [ex] (log/error ex \"unexpected exception happened\"))))"
   [execute-body & args]
