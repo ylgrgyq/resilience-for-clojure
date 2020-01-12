@@ -1,10 +1,10 @@
 (ns resilience.core
+  (:require [resilience.timelimiter :as timelimiter])
   (:import (io.github.resilience4j.circuitbreaker CircuitBreaker)
            (io.github.resilience4j.retry Retry)
            (io.github.resilience4j.bulkhead Bulkhead ThreadPoolBulkhead)
            (io.github.resilience4j.ratelimiter RateLimiter)
-           (io.github.resilience4j.timelimiter TimeLimiter)
-           (java.util.function Supplier)))
+           (io.github.resilience4j.timelimiter TimeLimiter)))
 
 (defmacro to-fn
   "Wrap body to a function."
@@ -120,7 +120,7 @@
     `(.call ^Callable ~f)))
 
 (defmacro execute
-  "Create a function with the `execute-body`, applies any wrapper functions
+  "Create a function with the `execute-body`, applies every wrapper functions
    in the `args` and then executes it.
    ex: (execute
          (let [data (fetch-data-from db)]
@@ -134,6 +134,28 @@
   `(->> (to-fn ~execute-body)
         ~@args
         execute-callable*))
+
+(defmacro execute-with-time-limiter
+  "Applies every wrapper functions in the `args` on the result of
+   the future returned by `execute-body` with a time limiter limiting
+   the completion time of the wrapped future.
+
+   Note that `execute-body` should return a java.util.Future.
+   ex: (execute-with-time-limiter
+         (let [fetch-future (fetch-data-from db)]
+           fetch-future)
+         time-limiter
+         (with-breaker breaker)
+         (with-retry retry-policy)
+         (recover-from [CallNotPermittedException ExceptionInfo]
+                       (fn [_] (log/error \"circuit breaker open\")))
+         (recover (fn [ex] (log/error ex \"unexpected exception happened\"))))"
+  [execute-body time-limiter & args]
+  (let [limiter (vary-meta time-limiter assoc :tag `TimeLimiter)]
+    `(->> (timelimiter/to-future-supplier ~execute-body)
+          (TimeLimiter/decorateFutureSupplier ~limiter )
+          ~@args
+          execute-callable*)))
 
 (defmacro with-resilience-family
   "Protected forms in `body` with resilience family members.

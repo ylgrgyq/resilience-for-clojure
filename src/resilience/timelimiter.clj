@@ -5,7 +5,15 @@
   (:import (java.time Duration)
            (io.github.resilience4j.timelimiter TimeLimiterConfig TimeLimiterConfig$Builder TimeLimiter TimeLimiterRegistry)
            (io.github.resilience4j.timelimiter.event TimeLimiterEvent TimeLimiterEvent$Type TimeLimiterOnErrorEvent TimeLimiterOnSuccessEvent TimeLimiterOnTimeoutEvent)
-           (io.github.resilience4j.core EventConsumer)))
+           (io.github.resilience4j.core EventConsumer)
+           (java.util.function Supplier)))
+
+(defmacro to-future-supplier
+  "Wrap body to a Future Supplier."
+  [& body]
+  `(reify Supplier
+     (get [_]
+       ~@body)))
 
 (defn ^TimeLimiterConfig time-limiter-config
   "Create a TimeLimiterConfig.
@@ -28,8 +36,8 @@
       (when-let [timeout (:timeout-millis opts)]
         (.timeoutDuration config (Duration/ofMillis timeout)))
 
-      (when (:cancel-running-future? opts)
-        (.cancelRunningFuture config true))
+      (when (contains? opts :cancel-running-future?)
+        (.cancelRunningFuture config (true? (:cancel-running-future? opts))))
 
       (.build config))))
 
@@ -109,6 +117,14 @@
   "Records a failed call. This method must be invoked when a call failed."
   [^TimeLimiter limiter ^Throwable throwable]
   (.onError limiter throwable))
+
+(defmacro execute-future-with-time-limiter
+  "Execute the following codes with the protection
+   of a time limiter given by `time-limiter` argument."
+  [time-limiter & body]
+  (let [timelimiter (vary-meta time-limiter assoc :tag `TimeLimiter)
+        future-supplier (with-meta `(to-future-supplier ~@body) {:tag `Supplier})]
+    `(.executeFutureSupplier ~timelimiter ~future-supplier)))
 
 (def ^{:dynamic true
        :doc     "Contextual value represents timer limiter name"}
