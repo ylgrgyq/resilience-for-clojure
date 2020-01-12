@@ -2,12 +2,12 @@
   (:import (io.github.resilience4j.core IntervalFunction)
            (java.util.function Function)))
 
-(defn default-interval-function
+(defn ^IntervalFunction default-interval-function
   "Creates an IntervalFunction which returns a fixed default interval of 500 [ms]."
   []
   (IntervalFunction/ofDefaults))
 
-(defn create-interval-function
+(defn ^IntervalFunction create-interval-function
   ([interval-millis]
    (IntervalFunction/of ^long interval-millis))
   ([interval-millis backoff-function]
@@ -15,7 +15,7 @@
                                                 (apply [_ previous-interval]
                                                   (backoff-function previous-interval))))))
 
-(defn create-randomized-interval-function
+(defn ^IntervalFunction create-randomized-interval-function
   ([]
    (IntervalFunction/ofRandomized))
   ([interval-millis]
@@ -23,7 +23,7 @@
   ([interval-millis randomization-factor]
    (IntervalFunction/ofRandomized ^long interval-millis ^double randomization-factor)))
 
-(defn create-exponential-backoff
+(defn ^IntervalFunction create-exponential-backoff
   ([]
    (IntervalFunction/ofExponentialBackoff))
   ([initial-interval-millis]
@@ -31,7 +31,7 @@
   ([initial-interval-millis multiplier]
    (IntervalFunction/ofExponentialBackoff ^long initial-interval-millis ^double multiplier)))
 
-(defn create-exponential-randomized-interval-function
+(defn ^IntervalFunction create-exponential-randomized-interval-function
   ([]
    (IntervalFunction/ofExponentialRandomBackoff))
   ([initial-interval-millis]
