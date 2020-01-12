@@ -1,6 +1,7 @@
 # Resilience for Clojure
 
 [![Build Status](https://travis-ci.com/ylgrgyq/resilience-for-clojure.svg?branch=master)](https://travis-ci.com/ylgrgyq/resilience-for-clojure)
+[![codecov](https://codecov.io/gh/ylgrgyq/resilience-for-clojure/branch/master/graph/badge.svg)](https://codecov.io/gh/ylgrgyq/resilience-for-clojure)
 [![Clojars Project](https://img.shields.io/clojars/v/resilience-for-clojure.svg)](https://clojars.org/resilience-for-clojure)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![cljdoc badge](https://cljdoc.org/badge/resilience-for-clojure/resilience-for-clojure)](https://cljdoc.org/d/resilience-for-clojure/resilience-for-clojure/CURRENT)
