@@ -1,8 +1,8 @@
 (defproject resilience-for-clojure "0.2.7-SNAPSHOT"
   :description "A clojure wrapper over Resilience4j" 
   :url "https://github.com/ylgrgyq/resilience-for-clojure"
-  :license {:name "Apache License, Version 2.0"
-            :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
+  :license {:name "The MIT License (MIT) "
+            :url "https://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [io.github.resilience4j/resilience4j-circuitbreaker "0.16.0"]
                  [io.github.resilience4j/resilience4j-ratelimiter "0.16.0"]
