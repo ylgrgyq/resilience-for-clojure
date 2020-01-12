@@ -1,4 +1,4 @@
-(defproject resilience-for-clojure "0.2.7-SNAPSHOT"
+(defproject resilience-for-clojure "0.2.7"
   :description "A clojure wrapper over Resilience4j" 
   :url "https://github.com/ylgrgyq/resilience-for-clojure"
   :license {:name "The MIT License (MIT) "
