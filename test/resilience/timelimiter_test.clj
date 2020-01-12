@@ -1,4 +1,5 @@
 (ns resilience.timelimiter-test
+  (:refer-clojure :exclude [name])
   (:require [clojure.test :refer :all]
             [resilience.timelimiter :refer :all]
             [resilience.retry :as retry]
