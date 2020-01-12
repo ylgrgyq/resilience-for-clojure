@@ -1,5 +1,4 @@
 (ns resilience.util
-  (:require [clojure.spec.alpha :as s])
   (:import (java.util Iterator)))
 
 (defn lazy-seq-from-iterator [^Iterator iter]
@@ -10,6 +9,9 @@
 
 (defn enum->keyword [^Enum e]
   (keyword (.name e)))
+
+(defn keyword->enum [^Class enum-class keyword-value]
+  (Enum/valueOf enum-class (name keyword-value)))
 
 (defmacro case-enum
   "Like `case`, but explicitly dispatch on Java enum ordinals."

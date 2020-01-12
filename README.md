@@ -140,7 +140,7 @@ Please note that the second parameter passed to `with-resilience-family` is a li
 
 ### Exception Handling
 
-What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CircuitBreakerOpenException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle these exceptions respectively which force you to add `try` block with many `catch` to protect your codes and react to different exceptions with different behavior. Finally, they will make your codes not as concise as above examples. After adding exceptions handling stuff, the example before may looks like this:
+What we missing until now is how to handle exceptions thrown by resilience family members. Most of resilience family members have their corresponding exceptions which will be thrown when certain conditions match. Such as when circuit breaker is open, the subsequent requests will trigger `CallNotPermittedException` in circuit breaker. And for bulkhead, when bulkhead is full, the subsequent parallel requests will trigger `BulkheadFullException` in bulkhead. What is matters here is that sometimes you need to handle these exceptions respectively which force you to add `try` block with many `catch` to protect your codes and react to different exceptions with different behavior. Finally, they will make your codes not as concise as above examples. After adding exceptions handling stuff, the example before may looks like this:
 
 ```clojure 
 (try
@@ -148,7 +148,7 @@ What we missing until now is how to handle exceptions thrown by resilience famil
     [:retry my-retry :breaker my-breaker :bulkhead my-bulkhead :rate-limiter my-ratelimiter]
     (do-something)
     (do-another-thing))
-  (catch CircuitBreakerOpenException ex
+  (catch CallNotPermittedException ex
     (log-circuit-breaker-open-and-return-a-fallback-value ex))
   (catch BulkheadFullException ex
     (log-bulkhead-full-and-return-a-fallback-value ex))
@@ -168,7 +168,7 @@ We provide another way to handle exceptions which may a little more concise in c
   (resilience/with-breaker my-breaker)
   (resilience/with-bulkhead my-bulkhead)
   (resilience/with-rate-limiter my-ratelimiter)
-  (resilience/recover-from CircuitBreakerOpenException log-circuit-breaker-open-and-return-a-fallback-value)
+  (resilience/recover-from CallNotPermittedException log-circuit-breaker-open-and-return-a-fallback-value)
   (resilience/recover-from BulkheadFullException log-bulkhead-full-and-return-a-fallback-value)
   (resilience/recover-from RequestNotPermitted log-request-not-permitted-and-return-a-fallback-value)
   (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
@@ -183,7 +183,7 @@ We provide another way to handle exceptions which may a little more concise in c
   (resilience/with-breaker my-breaker)
   (resilience/with-bulkhead my-bulkhead)
   (resilience/with-rate-limiter my-ratelimiter)
-  (resilience/recover-from [CircuitBreakerOpenException BulkheadFullException RequestNotPermitted]
+  (resilience/recover-from [CallNotPermittedException BulkheadFullException RequestNotPermitted]
                            log-resilience-family-exception-and-return-a-fallback-value)
   (resilience/recover log-unexpected-exception-and-return-a-fallback-value))
 

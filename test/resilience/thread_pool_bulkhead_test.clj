@@ -10,7 +10,7 @@
   (let [bulkhead-config {:max-thread-pool-size  5
                          :core-thread-pool-size 2
                          :queue-capacity        10
-                         :keep-alive-time       1000}]
+                         :keep-alive-millis     1000}]
     (defbulkhead testing-bulkhead bulkhead-config)
     (testing "bulkhead wait timeout"
       (let [exceeding-pool-size        (- (:max-thread-pool-size bulkhead-config)
