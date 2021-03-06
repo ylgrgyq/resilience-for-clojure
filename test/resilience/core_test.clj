@@ -60,6 +60,7 @@
       (retry/defretry testing-retry retry-config)
       (breaker/defbreaker testing-breaker breaker-basic-config)
       (let [retry-times (volatile! 0)
+            finally-times (volatile! 0)
             max-failed-allowed (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
                                                  (:failure-rate-threshold breaker-basic-config))
             testing-fn (fn []
@@ -74,12 +75,37 @@
                                              :expected-exception
 
                                              (instance? CallNotPermittedException ex)
-                                             :breaker-open)))))]
+                                             :breaker-open)))
+                           (recover nil (fn testing-finally-fn [] (vswap! finally-times inc)))))]
         (breaker/reset! testing-breaker)
         (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
         (doseq [_ (range max-failed-allowed)]
           (is (= (testing-fn) :expected-exception)))
         (is (= (testing-fn) :breaker-open))
+
+        (is (= (* (:max-attempts retry-config)
+                  max-failed-allowed)
+               @retry-times))
+        (is (= (+ 1 max-failed-allowed)
+               @finally-times))))
+    (testing "ignore exceptions"
+      (retry/defretry testing-retry retry-config)
+      (breaker/defbreaker testing-breaker breaker-basic-config)
+      (let [retry-times (volatile! 0)
+            max-failed-allowed (max-failed-times (:ring-buffer-size-in-closed-state breaker-basic-config)
+                                                 (:failure-rate-threshold breaker-basic-config))
+            testing-fn (fn []
+                         (execute
+                           (do (vswap! retry-times inc) (fail))
+                           (with-retry testing-retry)
+                           (with-breaker testing-breaker)
+                           (recover-from [CallNotPermittedException])
+                           (recover)))]
+        (breaker/reset! testing-breaker)
+        (fill-ring-buffer testing-breaker (:ring-buffer-size-in-closed-state breaker-basic-config) 0)
+        (doseq [_ (range max-failed-allowed)]
+          (is (nil? (testing-fn))))
+        (is (nil? (testing-fn)))
 
         (is (= (* (:max-attempts retry-config)
                   max-failed-allowed)

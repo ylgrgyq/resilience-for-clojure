@@ -174,7 +174,7 @@
           ~@wrappers
           execute-callable*)))
 
-(defn- recover-from* [exceptions failover-fn wraped-fn]
+(defn- recover-from* [exceptions failover-fn finally-fn wraped-fn]
   (let [failover-fn (or failover-fn (fn [_] nil))
         wraped-fn (vary-meta wraped-fn assoc :tag `Callable)
         handler (gensym "handler-fn-")
@@ -185,12 +185,14 @@
                                       (list handler %2))
                                exceptions ex-name-list))
                        `((catch ~exceptions ex#
-                           (~handler ex#))))]
+                           (~handler ex#))))
+        finally-block (when finally-fn `((finally (~finally-fn))))]
     `(let [~handler ~failover-fn]
        (fn []
          (try
            (.call ~wraped-fn)
-           ~@catch-blocks)))))
+           ~@catch-blocks
+           ~@finally-block)))))
 
 (defmacro recover-from
   "Using with `resilience.core/execute` to recover from enumerated exceptions list.
@@ -198,9 +200,9 @@
    enumerated exception occurred. If no failover function provided, then nil will
    be returned when exception happened."
   ([exceptions wraped-fn]
-   (recover-from* exceptions nil wraped-fn))
+   (recover-from* exceptions nil nil wraped-fn))
   ([exceptions failover-fn wraped-fn]
-   (recover-from* exceptions failover-fn wraped-fn)))
+   (recover-from* exceptions failover-fn nil wraped-fn)))
 
 (defmacro recover
   "Like `resilience.core/recover-from` but will catch any exceptions inherited
@@ -209,6 +211,8 @@
    exceptions occurred. If no failover function provided, then nil will
    be returned any exceptions happened."
   ([wraped-fn]
-   (recover-from* 'Exception nil wraped-fn))
+   (recover-from* 'Exception nil nil wraped-fn))
   ([failover-fn wraped-fn]
-   (recover-from* 'Exception failover-fn wraped-fn)))
+   (recover-from* 'Exception failover-fn nil wraped-fn))
+  ([failover-fn finally-fn wraped-fn]
+   (recover-from* 'Exception failover-fn finally-fn wraped-fn)))
