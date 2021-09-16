@@ -42,7 +42,7 @@
       (when-let [wait-millis (:max-wait-millis opts)]
         (.maxWaitDuration config (Duration/ofMillis wait-millis)))
 
-      (when-let [stack-trace-enabled (:writable-stack-trace-enabled opts)]
+      (when-some [stack-trace-enabled (:writable-stack-trace-enabled opts)]
         (.writableStackTraceEnabled config stack-trace-enabled))
 
       (.build config))))
