@@ -3,13 +3,13 @@
   :url "https://github.com/ylgrgyq/resilience-for-clojure"
   :license {:name "The MIT License (MIT) "
             :url "https://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
-                 [io.github.resilience4j/resilience4j-circuitbreaker "1.2.0"]
-                 [io.github.resilience4j/resilience4j-ratelimiter "1.2.0"]
-                 [io.github.resilience4j/resilience4j-retry "1.2.0"]
-                 [io.github.resilience4j/resilience4j-bulkhead "1.2.0"]
-                 [io.github.resilience4j/resilience4j-timelimiter "1.2.0"]
-                 [io.github.resilience4j/resilience4j-circularbuffer "1.2.0"]]
+  :dependencies [[org.clojure/clojure "1.11.1"]
+                 [io.github.resilience4j/resilience4j-circuitbreaker "1.7.1"]
+                 [io.github.resilience4j/resilience4j-ratelimiter "1.7.1"]
+                 [io.github.resilience4j/resilience4j-retry "1.7.1"]
+                 [io.github.resilience4j/resilience4j-bulkhead "1.7.1"]
+                 [io.github.resilience4j/resilience4j-timelimiter "1.7.1"]
+                 [io.github.resilience4j/resilience4j-circularbuffer "1.7.1"]]
   :plugins [[lein-codox "0.10.7"]
             [lein-cloverage "1.1.2"]]
   :codox {:output-path "target/codox"
