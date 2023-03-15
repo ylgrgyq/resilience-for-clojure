@@ -1,7 +1,8 @@
 (ns ^{:doc "Lots of ideas under this namespace copied from https://github.com/sunng87/diehard/blob/0.7.2/src/diehard/spec.clj"}
   resilience.spec
   (:require [clojure.spec.alpha :as s])
-  (:import (io.github.resilience4j.retry IntervalFunction) (io.github.resilience4j.circuitbreaker CircuitBreakerConfig$SlidingWindowType)))
+  (:import (io.github.resilience4j.core IntervalFunction)
+           (io.github.resilience4j.circuitbreaker CircuitBreakerConfig$SlidingWindowType)))
 
 ;; copied from https://github.com/sunng87/diehard and https://groups.google.com/forum/#!topic/clojure/fti0eJdPQJ8
 (defmacro only-keys
